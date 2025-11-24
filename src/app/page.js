@@ -67,14 +67,16 @@ const getAge = (dob) => {
 };
 
 const createInitialProfile = () => ({
-  country: COUNTRY_CODES[0].code,
+  country: COUNTRY_CODES[0].key,
   phone: '',
   signupMethod: 'phone',
   dob: '',
   username: '',
   nickname: '',
   gender: '',
+  genderDetail: '',
   preference: '',
+  preferenceDetail: '',
   interests: [],
   location: ''
 });
@@ -343,8 +345,8 @@ export default function App() {
         );
       case 'otp':
         return (
-          <PhoneVerificationScreen
-            phone={`${pendingUser.country} ${pendingUser.phone}`}
+        <PhoneVerificationScreen
+          phone={`${(COUNTRY_CODES.find((entry) => entry.key === pendingUser.country)?.dial || '').trim()} ${pendingUser.phone}`.trim()}
             code={otpInput}
             onChange={setOtpInput}
             onSubmit={handleOtpSubmit}

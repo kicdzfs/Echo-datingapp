@@ -1,7 +1,15 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Phone, ArrowLeft } from 'lucide-react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
+import {
+  Phone,
+  ArrowLeft,
+  ChevronDown,
+  CalendarDays,
+  ChevronLeft,
+  ChevronRight,
+  X
+} from 'lucide-react';
 import {
   COUNTRY_CODES,
   INTEREST_OPTIONS,
@@ -11,6 +19,147 @@ import {
   INFINITY_USERS
 } from '../../data/mockData';
 
+const GENDER_OPTIONS = [
+  {
+    value: 'Female',
+    label: 'Female',
+    details: [
+      {
+        label: 'Cis woman',
+        description:
+          'A woman whose gender aligns with the sex assigned at birth.'
+      },
+      {
+        label: 'Trans woman',
+        description:
+          'A woman whose gender is different from the sex assigned at birth.'
+      },
+      {
+        label: 'Intersex woman',
+        description:
+          'A woman born with variations in sex characteristics beyond binary definitions.'
+      }
+    ]
+  },
+  {
+    value: 'Male',
+    label: 'Male',
+    details: [
+      {
+        label: 'Cis man',
+        description:
+          'A man whose gender aligns with the sex assigned at birth.'
+      },
+      {
+        label: 'Trans man',
+        description:
+          'A man whose gender is different from the sex assigned at birth.'
+      },
+      {
+        label: 'Intersex man',
+        description:
+          'A man born with variations in sex characteristics beyond binary definitions.'
+      }
+    ]
+  },
+  {
+    value: 'Beyond binary',
+    label: 'Beyond Binary',
+    details: [
+      {
+        label: 'Non-binary',
+        description:
+          'An umbrella term for genders that are not exclusively male or female.'
+      },
+      {
+        label: 'Genderqueer',
+        description:
+          'A gender identity that may be fluid or blend masculine and feminine qualities.'
+      },
+      {
+        label: 'Agender',
+        description:
+          'Someone who identifies as not having a gender.'
+      }
+    ]
+  }
+];
+
+const PREFERENCE_OPTIONS = [
+  {
+    value: 'Women',
+    label: 'Women',
+    details: [
+      {
+        label: 'Women',
+        description: 'People who identify as women.'
+      },
+      {
+        label: 'Trans women',
+        description:
+          'Women who are transgender or transfeminine.'
+      }
+    ]
+  },
+  {
+    value: 'Men',
+    label: 'Men',
+    details: [
+      {
+        label: 'Men',
+        description: 'People who identify as men.'
+      },
+      {
+        label: 'Trans men',
+        description:
+          'Men who are transgender or transmasculine.'
+      }
+    ]
+  },
+  {
+    value: 'Beyond binary',
+    label: 'Beyond Binary',
+    details: [
+      {
+        label: 'Non-binary people',
+        description: 'People whose gender is beyond the binary spectrum.'
+      },
+      {
+        label: 'Gender-fluid people',
+        description: 'People whose gender may shift over time.'
+      }
+    ]
+  },
+  {
+    value: 'Any',
+    label: 'All genders',
+    details: [
+      {
+        label: 'Everyone',
+        description:
+          'Show me matches across the gender spectrum.'
+      }
+    ]
+  }
+];
+
+const MONTH_NAMES = [
+  'January',
+  'February',
+  'March',
+  'April',
+  'May',
+  'June',
+  'July',
+  'August',
+  'September',
+  'October',
+  'November',
+  'December'
+];
+
+const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+
 export const AuthLanding = ({
   onSignupPhone,
   onSocialLogin,
@@ -18,9 +167,11 @@ export const AuthLanding = ({
 }) => (
   <div className="flex flex-col flex-1 bg-gradient-to-b from-[#E0D9FF] to-[#F3F0FF] px-6 py-8 text-center overflow-y-auto">
     <div className="flex flex-col items-center justify-center gap-5">
-      <div className="bg-white/80 rounded-3xl px-8 py-4 shadow-lg text-[#5F48E6] font-bold text-3xl">
-        Echo
-      </div>
+      <img
+        src="/logos/echoapp-logo.png"
+        alt="Echo"
+        className="w-28 sm:w-32 h-auto object-contain mx-auto drop-shadow-lg"
+      />
       <p className="text-lg text-[#5F48E6] font-semibold leading-tight max-w-sm">
         Where kindred souls find their echo beyond appearances
       </p>
@@ -45,12 +196,15 @@ export const AuthLanding = ({
         ))}
       </div>
     </div>
-    <button
-      onClick={onLoginExisting}
-      className="text-sm text-gray-600 mt-4 font-medium underline underline-offset-2"
-    >
-      Already have account? Log In
-    </button>
+    <div className="text-sm text-gray-600 mt-4 font-medium">
+      Already have account?{' '}
+      <button
+        onClick={onLoginExisting}
+        className="underline underline-offset-2 text-[#5F48E6]"
+      >
+        Log In
+      </button>
+    </div>
   </div>
 );
 
@@ -144,61 +298,178 @@ export const PhoneEntryScreen = ({
   onChange,
   onSubmit,
   onBack
-}) => (
-  <div className="h-full flex flex-col bg-white">
-    <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
-      <button onClick={onBack}>
-        <ArrowLeft className="w-6 h-6 text-[#151921]" />
-      </button>
-      <h2 className="font-bold text-lg text-[#151921]">
-        Can we get your number?
-      </h2>
+}) => {
+  const countryMeta =
+    COUNTRY_CODES.find((entry) => entry.key === country) ||
+    COUNTRY_CODES[0];
+  const numericPhone = phone.replace(/\D/g, '');
+  const withinLength =
+    numericPhone.length >= (countryMeta?.minLength || 4) &&
+    numericPhone.length <= (countryMeta?.maxLength || 15);
+  const phoneError =
+    numericPhone.length > 0 && !withinLength
+      ? `Phone numbers in ${countryMeta.country} should be ${
+          countryMeta.minLength === countryMeta.maxLength
+            ? `${countryMeta.minLength} digits`
+            : `${countryMeta.minLength}-${countryMeta.maxLength} digits`
+        }.`
+      : '';
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [countrySearch, setCountrySearch] = useState('');
+  const pickerRef = useRef(null);
+
+  const buildPlaceholder = useCallback((minLen, maxLen) => {
+    const digits = '12345678901234567890';
+    const length = Math.min(maxLen || minLen || 10, digits.length);
+    const sample = digits.slice(0, length);
+    return sample.replace(/(.{3})/g, '$1 ').trim();
+  }, []);
+
+  const phonePlaceholder = useMemo(
+    () => buildPlaceholder(countryMeta.minLength, countryMeta.maxLength),
+    [countryMeta, buildPlaceholder]
+  );
+
+  const filteredCountries = useMemo(() => {
+    const term = countrySearch.trim().toLowerCase();
+    if (!term) return COUNTRY_CODES;
+    return COUNTRY_CODES.filter(
+      (entry) =>
+        entry.country.toLowerCase().includes(term) ||
+        entry.dial.includes(term)
+    );
+  }, [countrySearch]);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (!pickerRef.current?.contains(event.target)) {
+        setPickerOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  return (
+    <div className="h-full flex flex-col bg-white">
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
+        <button onClick={onBack}>
+          <ArrowLeft className="w-6 h-6 text-[#151921]" />
+        </button>
+        <h2 className="font-bold text-lg text-[#151921]">
+          Can we get your number?
+        </h2>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!phoneError && numericPhone.length > 0) {
+            onSubmit();
+          }
+        }}
+        className="flex-1 p-4 flex flex-col gap-4"
+      >
+        <label className="text-sm font-semibold text-gray-500">
+          Your number
+        </label>
+        <div className="flex gap-3 flex-wrap" ref={pickerRef}>
+          <div className="flex-1 min-w-[170px] sm:min-w-[200px] space-y-2 relative">
+            <p className="text-xs font-semibold text-gray-500 uppercase">
+              Country / Region
+            </p>
+            <button
+              type="button"
+              onClick={() => setPickerOpen((prev) => !prev)}
+              className={`w-full h-14 rounded-2xl border border-gray-200 bg-white px-4 flex items-center transition-colors ${
+                pickerOpen ? 'ring-2 ring-[#5F48E6]' : ''
+              }`}
+            >
+              <span className="text-sm font-bold text-[#151921] truncate">
+                {countryMeta.country}
+              </span>
+              <div className="ml-auto flex items-center gap-2 text-sm font-semibold text-gray-500">
+                <span className="tabular-nums">{countryMeta.dial}</span>
+                <ChevronDown
+                  className={`w-4 h-4 text-gray-400 transition-transform ${
+                    pickerOpen ? 'rotate-180' : ''
+                  }`}
+                />
+              </div>
+            </button>
+            {pickerOpen && (
+              <div className="absolute z-20 left-0 right-0 top-full mt-2 bg-white rounded-2xl shadow-2xl border border-[#E1DAFF]">
+                <div className="p-3 border-b border-gray-100">
+                  <input
+                    value={countrySearch}
+                    onChange={(e) => setCountrySearch(e.target.value)}
+                    placeholder="Search country or code"
+                    className="w-full rounded-xl border border-gray-200 px-3 py-2 text-sm text-[#151921] placeholder:text-[#7B77A3] outline-none focus:ring-2 focus:ring-[#5F48E6]"
+                  />
+                </div>
+                <div className="max-h-60 overflow-y-auto scrollbar-auto-hide">
+                  {filteredCountries.map((c) => (
+                    <button
+                      key={c.key}
+                      type="button"
+                      onClick={() => {
+                        onChange({ country: c.key });
+                        setPickerOpen(false);
+                        setCountrySearch('');
+                      }}
+                      className={`w-full flex items-center justify-between px-4 py-2 text-left text-sm ${
+                        c.key === country
+                          ? 'bg-[#F3F0FF] text-[#5F48E6]'
+                          : 'text-[#151921]'
+                      }`}
+                    >
+                      <span>{c.country}</span>
+                      <span className="font-semibold">{c.dial}</span>
+                    </button>
+                  ))}
+                  {!filteredCountries.length && (
+                    <div className="px-4 py-3 text-xs text-gray-500">
+                      No matches
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+          <div className="flex-[1.4] min-w-[200px] space-y-2">
+            <p className="text-xs font-semibold text-gray-500 uppercase">
+              Phone number
+            </p>
+            <input
+              type="tel"
+              inputMode="numeric"
+              value={numericPhone}
+              onChange={(e) =>
+                onChange({ phone: e.target.value.replace(/\D/g, '') })
+              }
+              className="w-full h-14 border border-gray-200 rounded-2xl px-4 text-base tracking-wider outline-none focus:ring-2 focus:ring-[#5F48E6] text-[#151921] placeholder:text-[#7B77A3]"
+              placeholder={phonePlaceholder}
+              required
+            />
+          </div>
+        </div>
+        {phoneError && (
+          <p className="text-xs text-red-500">{phoneError}</p>
+        )}
+        <p className="text-xs text-gray-400">
+          We&apos;ll text you a code to verify you&apos;re really you.
+          Message and data rates may apply.
+        </p>
+        <button
+          type="submit"
+          disabled={numericPhone.length === 0 || Boolean(phoneError)}
+          className="mt-auto bg-[#151921] text-white py-3 rounded-2xl font-bold active:scale-95 transition-transform disabled:opacity-30"
+        >
+          Send code
+        </button>
+      </form>
     </div>
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-      className="flex-1 p-4 flex flex-col gap-4"
-    >
-      <label className="text-sm font-semibold text-gray-500">
-        Country / Region
-      </label>
-      <select
-        value={country}
-        onChange={(e) => onChange({ country: e.target.value })}
-        className="border border-gray-200 rounded-2xl p-3 text-sm outline-none focus:ring-2 focus:ring-[#5F48E6]"
-      >
-        {COUNTRY_CODES.map((c) => (
-          <option key={c.code} value={c.code}>
-            {c.country} ({c.code})
-          </option>
-        ))}
-      </select>
-      <label className="text-sm font-semibold text-gray-500">
-        Phone number
-      </label>
-      <input
-        type="tel"
-        value={phone}
-        onChange={(e) => onChange({ phone: e.target.value })}
-        className="border border-gray-200 rounded-2xl p-3 text-lg tracking-wider outline-none focus:ring-2 focus:ring-[#5F48E6]"
-        placeholder="123 456 7890"
-        required
-      />
-      <p className="text-xs text-gray-400">
-        We&apos;ll text you a code to verify you&apos;re really you.
-        Message and data rates may apply.
-      </p>
-      <button
-        type="submit"
-        className="mt-auto bg-[#151921] text-white py-3 rounded-2xl font-bold active:scale-95 transition-transform"
-      >
-        Send code
-      </button>
-    </form>
-  </div>
-);
+  );
+};
 
 export const PhoneVerificationScreen = ({
   phone,
@@ -229,11 +500,11 @@ export const PhoneVerificationScreen = ({
       </p>
       <input
         type="text"
+        inputMode="numeric"
         maxLength={6}
         value={code}
-        onChange={(e) => onChange(e.target.value.replace(/\\D/g, ''))}
+        onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
         className="border border-gray-200 rounded-2xl p-3 text-center tracking-[0.5rem] text-xl outline-none focus:ring-2 focus:ring-[#5F48E6]"
-        placeholder="• • • • • •"
       />
       {error && (
         <div className="text-xs text-red-500 font-semibold">
@@ -261,19 +532,28 @@ const stepOrder = [
   'location'
 ];
 
-const StepHeader = ({ title, description, onBack, showBack }) => (
-  <div className="flex items-center gap-3 px-4 py-4">
-    {showBack ? (
-      <button onClick={onBack}>
-        <ArrowLeft className="w-6 h-6 text-[#151921]" />
-      </button>
-    ) : (
-      <span className="w-6" />
-    )}
-    <div>
-      <h2 className="font-bold text-lg text-[#151921]">{title}</h2>
-      <p className="text-xs text-gray-500">{description}</p>
+const StepHeader = ({
+  title,
+  description,
+  onBack,
+  showBack,
+  rightContent
+}) => (
+  <div className="flex items-center justify-between px-4 py-4">
+    <div className="flex items-center gap-3">
+      {showBack ? (
+        <button onClick={onBack}>
+          <ArrowLeft className="w-6 h-6 text-[#151921]" />
+        </button>
+      ) : (
+        <span className="w-6" />
+      )}
+      <div>
+        <h2 className="font-bold text-lg text-[#151921]">{title}</h2>
+        <p className="text-xs text-gray-500">{description}</p>
+      </div>
     </div>
+    {rightContent}
   </div>
 );
 
@@ -297,8 +577,32 @@ export const ProfileWizard = ({
 }) => {
   const [step, setStep] = useState(0);
   const [locationStatus, setLocationStatus] = useState(null);
+  const autoLocationRequestedRef = useRef(false);
+  const dobFieldRef = useRef(null);
+  const calendarRef = useRef(null);
+  const [calendarOpen, setCalendarOpen] = useState(false);
+  const minDOB = '1900-01-01';
+  const minDateObj = useMemo(() => new Date(minDOB), []);
+  const todayDate = useMemo(() => new Date(), []);
+  const [calendarView, setCalendarView] = useState(() => {
+    const base = data.dob ? new Date(data.dob) : new Date();
+    return { year: base.getFullYear(), month: base.getMonth() };
+  });
+  const [yearPageStart, setYearPageStart] = useState(() => {
+    const base = data.dob ? new Date(data.dob) : new Date();
+    return Math.floor(base.getFullYear() / 12) * 12;
+  });
+  const [showYearPicker, setShowYearPicker] = useState(false);
+  const minYear = minDateObj.getFullYear();
+  const maxYear = todayDate.getFullYear();
+  const maxYearStart = Math.max(minYear, maxYear - 11);
+
+  const currentStep = stepOrder[step];
 
   const goNext = () => {
+    if (currentStep === 'dob' && calendarOpen) {
+      setCalendarOpen(false);
+    }
     if (step === stepOrder.length - 1) {
       onComplete();
     } else {
@@ -307,11 +611,12 @@ export const ProfileWizard = ({
   };
 
   const goBack = () => {
+    if (currentStep === 'dob' && calendarOpen) {
+      setCalendarOpen(false);
+    }
     if (step === 0) onExit();
     else setStep((prev) => prev - 1);
   };
-
-  const currentStep = stepOrder[step];
 
   const stepValid = () => {
     switch (currentStep) {
@@ -332,23 +637,358 @@ export const ProfileWizard = ({
     }
   };
 
+  const requestLocation = useCallback(
+    (fromButton = false) => {
+      if (!navigator.geolocation) {
+        setLocationStatus('Location services unavailable.');
+        return;
+      }
+      setLocationStatus(
+        fromButton ? 'Refreshing your location...' : 'Trying to detect your area...'
+      );
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude, longitude } = pos.coords;
+          try {
+            const response = await fetch(
+              `https://geocode.maps.co/reverse?lat=${latitude}&lon=${longitude}`
+            );
+            const json = await response.json();
+            const address = json.address || {};
+            const city =
+              address.city ||
+              address.town ||
+              address.village ||
+              address.state;
+            const country = address.country;
+            const fallback = json.display_name;
+            const composed =
+              [city, country].filter(Boolean).join(', ') || fallback;
+            const finalLocation =
+              composed || 'Detected nearby area (edit if needed)';
+            onUpdate({ location: finalLocation });
+            setLocationStatus(
+              composed
+                ? 'Location captured.'
+                : 'Approximate location captured. Please review.'
+            );
+          } catch (err) {
+            const fallbackCoords = `${latitude.toFixed(
+              2
+            )}, ${longitude.toFixed(2)}`;
+            onUpdate({ location: fallbackCoords });
+            setLocationStatus(
+              'Coordinates captured. Please refine the address if needed.'
+            );
+          }
+        },
+        () =>
+          setLocationStatus(
+            'Unable to retrieve location. Please type manually.'
+          ),
+        { enableHighAccuracy: true }
+      );
+    },
+    [onUpdate]
+  );
+
+  useEffect(() => {
+    if (currentStep === 'location' && !autoLocationRequestedRef.current) {
+      autoLocationRequestedRef.current = true;
+      const timer = setTimeout(() => requestLocation(), 0);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [currentStep, requestLocation]);
+
+  useEffect(() => {
+    if (!calendarOpen) return undefined;
+    const handleClick = (event) => {
+      if (
+        !calendarRef.current?.contains(event.target) &&
+        !dobFieldRef.current?.contains(event.target)
+      ) {
+        setCalendarOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [calendarOpen]);
+
+  const formatDobDisplay = (value) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return value;
+    return date.toLocaleDateString(undefined, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  };
+
+  const changeMonth = (direction) => {
+    setCalendarView((prev) => {
+      const next = new Date(prev.year, prev.month + direction, 1);
+      if (
+        next < new Date(minYear, 0, 1) ||
+        next > new Date(maxYear, 11, 31)
+      ) {
+        return prev;
+      }
+      return { year: next.getFullYear(), month: next.getMonth() };
+    });
+  };
+
+  const handleDaySelect = (day) => {
+    const target = new Date(calendarView.year, calendarView.month, day);
+    if (target < minDateObj || target > todayDate) return;
+    const iso = target.toISOString().split('T')[0];
+    onUpdate({ dob: iso });
+    setCalendarView({ year: target.getFullYear(), month: target.getMonth() });
+    setCalendarOpen(false);
+  };
+
+  const handleYearSelect = (year) => {
+    if (year < minYear || year > maxYear) return;
+    setCalendarView((prev) => ({ ...prev, year }));
+    setShowYearPicker(false);
+    setYearPageStart(Math.floor(year / 12) * 12);
+  };
+
+  const moveYearPage = (direction) => {
+    setYearPageStart((prev) => {
+      let next = prev + direction * 12;
+      if (next < minYear) next = minYear;
+      if (next > maxYearStart) next = maxYearStart;
+      return next;
+    });
+  };
+
+  const toggleYearPicker = () => {
+    setShowYearPicker((prev) => {
+      if (!prev) {
+        setYearPageStart(Math.floor(calendarView.year / 12) * 12);
+      }
+      return !prev;
+    });
+  };
   const renderStep = () => {
     switch (currentStep) {
       case 'dob':
+        const startOfMonth = new Date(
+          calendarView.year,
+          calendarView.month,
+          1
+        );
+        const daysInMonth = new Date(
+          calendarView.year,
+          calendarView.month + 1,
+          0
+        ).getDate();
+        const leadingEmpty = startOfMonth.getDay();
+        const cells = [];
+        for (let i = 0; i < leadingEmpty; i += 1) {
+          cells.push(null);
+        }
+        for (let day = 1; day <= daysInMonth; day += 1) {
+          cells.push(day);
+        }
+        while (cells.length % 7 !== 0) {
+          cells.push(null);
+        }
+        const canGoPrev = new Date(
+          calendarView.year,
+          calendarView.month,
+          1
+        ) > new Date(minDateObj.getFullYear(), minDateObj.getMonth(), 1);
+        const canGoNext = new Date(
+          calendarView.year,
+          calendarView.month,
+          daysInMonth
+        ) < todayDate;
         return (
           <div className="p-4 space-y-4">
             <label className="text-sm font-semibold text-gray-500">
               Date of birth
             </label>
-            <input
-              type="date"
-              value={data.dob}
-              onChange={(e) => onUpdate({ dob: e.target.value })}
-              className="w-full border border-gray-200 rounded-2xl p-3 text-sm outline-none focus:ring-2 focus:ring-[#5F48E6]"
-            />
+            <div className="relative" ref={dobFieldRef}>
+              <input
+                type="text"
+                readOnly
+                value={formatDobDisplay(data.dob)}
+                onClick={() => setCalendarOpen(true)}
+                placeholder="MM / DD / YYYY"
+                className="w-full border border-gray-200 rounded-2xl p-3 pr-12 text-sm outline-none focus:ring-2 focus:ring-[#5F48E6] text-[#151921] bg-white cursor-pointer"
+              />
+              <button
+                type="button"
+                className="absolute right-3 top-1/2 -translate-y-1/2 p-2 rounded-xl bg-white text-[#5F48E6]"
+                onClick={() => setCalendarOpen((prev) => !prev)}
+              >
+                <CalendarDays className="w-5 h-5" />
+              </button>
+              {calendarOpen && (
+                <div className="fixed inset-0 z-40 flex items-center justify-center bg-black/30 px-4">
+                  <div
+                    ref={calendarRef}
+                    className="w-full max-w-sm bg-white rounded-3xl shadow-2xl border border-gray-100 p-4 space-y-3"
+                  >
+                    <div className="flex items-center justify-between">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setCalendarOpen(false);
+                          setShowYearPicker(false);
+                        }}
+                        className="p-2 rounded-full text-gray-400 hover:text-[#151921]"
+                        aria-label="Close calendar"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => canGoPrev && changeMonth(-1)}
+                          disabled={!canGoPrev}
+                          className={`p-1 rounded-full border ${
+                            canGoPrev
+                              ? 'border-gray-200 text-gray-600'
+                              : 'border-transparent text-gray-300'
+                          }`}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={toggleYearPicker}
+                          className="text-sm font-semibold text-[#151921]"
+                        >
+                          {MONTH_NAMES[calendarView.month]} {calendarView.year}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => canGoNext && changeMonth(1)}
+                          disabled={!canGoNext}
+                          className={`p-1 rounded-full border ${
+                            canGoNext
+                              ? 'border-gray-200 text-gray-600'
+                              : 'border-transparent text-gray-300'
+                          }`}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+                    {showYearPicker ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center justify-between">
+                          <button
+                            type="button"
+                            onClick={() => moveYearPage(-1)}
+                            disabled={yearPageStart <= minYear}
+                            className={`text-xs font-semibold ${
+                              yearPageStart <= minYear
+                                ? 'text-gray-300'
+                                : 'text-[#5F48E6]'
+                            }`}
+                          >
+                            Previous
+                          </button>
+                          <span className="text-sm font-semibold text-[#151921]">
+                            {yearPageStart} - {Math.min(yearPageStart + 11, maxYear)}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => moveYearPage(1)}
+                            disabled={yearPageStart >= maxYearStart}
+                            className={`text-xs font-semibold ${
+                              yearPageStart >= maxYearStart
+                                ? 'text-gray-300'
+                                : 'text-[#5F48E6]'
+                            }`}
+                          >
+                            Next
+                          </button>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          {Array.from({ length: 12 }, (_, idx) => yearPageStart + idx).map(
+                            (year) => {
+                              const disabled = year < minYear || year > maxYear;
+                              const active = calendarView.year === year;
+                              return (
+                                <button
+                                  key={year}
+                                  type="button"
+                                  disabled={disabled}
+                                  onClick={() => handleYearSelect(year)}
+                                  className={`py-2 rounded-xl text-sm font-semibold ${
+                                    active
+                                      ? 'bg-[#5F48E6] text-white'
+                                      : 'bg-[#F3F0FF] text-[#151921]'
+                                  } ${
+                                    disabled ? 'opacity-30 cursor-not-allowed' : ''
+                                  }`}
+                                >
+                                  {year}
+                                </button>
+                              );
+                            }
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="grid grid-cols-7 gap-1 text-[11px] text-gray-400 font-semibold">
+                          {DAY_LABELS.map((label, index) => (
+                            <span key={`${label}-${index}`} className="text-center">
+                              {label}
+                            </span>
+                          ))}
+                        </div>
+                        <div className="grid grid-cols-7 gap-1 text-sm">
+                          {cells.map((day, idx) => {
+                            if (!day) {
+                              return <span key={`empty-${idx}`} />;
+                            }
+                            const candidate = new Date(
+                              calendarView.year,
+                              calendarView.month,
+                              day
+                            );
+                            const iso = candidate.toISOString().split('T')[0];
+                            const disabled =
+                              candidate < minDateObj || candidate > todayDate;
+                            const isSelected = data.dob === iso;
+                            return (
+                              <button
+                                key={iso}
+                                type="button"
+                                onClick={() => handleDaySelect(day)}
+                                disabled={disabled}
+                                className={`h-9 rounded-full text-[13px] ${
+                                  isSelected
+                                    ? 'bg-[#5F48E6] text-white'
+                                    : 'text-[#151921]'
+                                } ${
+                                  disabled
+                                    ? 'opacity-30 cursor-not-allowed'
+                                    : 'hover:bg-[#F3F0FF]'
+                                }`}
+                              >
+                                {day}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
             {!isAdult(data.dob) && data.dob && (
               <p className="text-xs text-red-500">
-                You must be at least 18 to join Echo.
+                Sorry, you must be at least 18 years old to register.
               </p>
             )}
           </div>
@@ -391,23 +1031,67 @@ export const ProfileWizard = ({
             <label className="text-sm font-semibold text-gray-500">
               I identify as
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {['Female', 'Male', 'Non-binary', 'Prefer not to say'].map(
-                (value) => (
-                  <button
-                    key={value}
-                    onClick={() => onUpdate({ gender: value })}
-                    type="button"
-                    className={`p-4 rounded-2xl border ${
-                      data.gender === value
-                        ? 'border-[#5F48E6] text-[#5F48E6] bg-white'
-                        : 'border-gray-200 text-gray-500 bg-gray-50'
-                    } font-semibold text-sm`}
+            <div className="space-y-3">
+              {GENDER_OPTIONS.map((option) => {
+                const active = data.gender === option.value;
+                return (
+                  <div
+                    key={option.value}
+                    className={`rounded-2xl border transition-colors ${
+                      active
+                        ? 'border-[#5F48E6] bg-white shadow'
+                        : 'border-gray-200 bg-gray-50'
+                    }`}
                   >
-                    {value}
-                  </button>
-                )
-              )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdate({ gender: option.value, genderDetail: '' })
+                      }
+                      className="w-full flex items-center justify-between px-4 py-3 text-left"
+                    >
+                      <span className="font-semibold text-[#151921]">
+                        {option.label}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {active ? 'Selected' : 'Choose'}
+                      </span>
+                    </button>
+                    {active && (
+                      <div className="border-t border-gray-100 px-4 py-3 space-y-2">
+                        <p className="text-[11px] uppercase text-gray-400 font-semibold">
+                          Add more about your gender
+                        </p>
+                        {option.details.map((detail) => {
+                          const detailActive =
+                            data.genderDetail === detail.label;
+                          return (
+                            <button
+                              key={detail.label}
+                              type="button"
+                              onClick={() =>
+                                onUpdate({ genderDetail: detail.label })
+                              }
+                              className={`w-full text-left rounded-xl border px-3 py-2 text-sm ${
+                                detailActive
+                                  ? 'border-[#5F48E6] text-[#5F48E6] bg-[#F3F0FF]'
+                                  : 'border-gray-200 text-gray-600 bg-white'
+                              }`}
+                            >
+                              <span className="font-semibold block">
+                                {detail.label}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {detail.description}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -417,23 +1101,70 @@ export const ProfileWizard = ({
             <label className="text-sm font-semibold text-gray-500">
               I&apos;m looking for
             </label>
-            <div className="grid grid-cols-2 gap-3">
-              {['Female', 'Male', 'Any', 'Prefer not to say'].map(
-                (value) => (
-                  <button
-                    key={value}
-                    onClick={() => onUpdate({ preference: value })}
-                    type="button"
-                    className={`p-4 rounded-2xl border ${
-                      data.preference === value
-                        ? 'border-[#5F48E6] text-[#5F48E6] bg-white'
-                        : 'border-gray-200 text-gray-500 bg-gray-50'
-                    } font-semibold text-sm`}
+            <div className="space-y-3">
+              {PREFERENCE_OPTIONS.map((option) => {
+                const active = data.preference === option.value;
+                return (
+                  <div
+                    key={option.value}
+                    className={`rounded-2xl border transition-colors ${
+                      active
+                        ? 'border-[#5F48E6] bg-white shadow'
+                        : 'border-gray-200 bg-gray-50'
+                    }`}
                   >
-                    {value}
-                  </button>
-                )
-              )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onUpdate({
+                          preference: option.value,
+                          preferenceDetail: ''
+                        })
+                      }
+                      className="w-full flex items-center justify-between px-4 py-3 text-left"
+                    >
+                      <span className="font-semibold text-[#151921]">
+                        {option.label}
+                      </span>
+                      <span className="text-xs text-gray-400">
+                        {active ? 'Selected' : 'Choose'}
+                      </span>
+                    </button>
+                    {active && (
+                      <div className="border-t border-gray-100 px-4 py-3 space-y-2">
+                        <p className="text-[11px] uppercase text-gray-400 font-semibold">
+                          Who should we show you?
+                        </p>
+                        {option.details.map((detail) => {
+                          const detailActive =
+                            data.preferenceDetail === detail.label;
+                          return (
+                            <button
+                              key={detail.label}
+                              type="button"
+                              onClick={() =>
+                                onUpdate({ preferenceDetail: detail.label })
+                              }
+                              className={`w-full text-left rounded-xl border px-3 py-2 text-sm ${
+                                detailActive
+                                  ? 'border-[#5F48E6] text-[#5F48E6] bg-[#F3F0FF]'
+                                  : 'border-gray-200 text-gray-600 bg-white'
+                              }`}
+                            >
+                              <span className="font-semibold block">
+                                {detail.label}
+                              </span>
+                              <span className="text-xs text-gray-500">
+                                {detail.description}
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -492,28 +1223,7 @@ export const ProfileWizard = ({
             />
             <button
               type="button"
-              onClick={() => {
-                if (!navigator.geolocation) {
-                  setLocationStatus('Location services unavailable.');
-                  return;
-                }
-                navigator.geolocation.getCurrentPosition(
-                  (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    onUpdate({
-                      location: `${latitude.toFixed(
-                        2
-                      )}, ${longitude.toFixed(2)}`
-                    });
-                    setLocationStatus('Location captured.');
-                  },
-                  () =>
-                    setLocationStatus(
-                      'Unable to retrieve location. Please type manually.'
-                    ),
-                  { enableHighAccuracy: true }
-                );
-              }}
+              onClick={() => requestLocation(true)}
               className="text-xs font-semibold text-[#5F48E6] underline"
             >
               Use current location
@@ -550,6 +1260,14 @@ export const ProfileWizard = ({
     location: 'Used to show nearby members.'
   };
 
+  const allowSkip = currentStep === 'interests' || currentStep === 'location';
+  const handleSkip = () => {
+    if (currentStep === 'location') {
+      setLocationStatus('Skipped for now. You can update it later.');
+    }
+    goNext();
+  };
+
   return (
     <div className="h-full flex flex-col bg-[#F3F0FF]">
       <StepHeader
@@ -557,6 +1275,17 @@ export const ProfileWizard = ({
         description={descriptions[currentStep]}
         onBack={goBack}
         showBack
+        rightContent={
+          allowSkip ? (
+            <button
+              type="button"
+              onClick={handleSkip}
+              className="text-xs font-bold text-[#5F48E6]"
+            >
+              Skip
+            </button>
+          ) : null
+        }
       />
       <div className="flex-1 overflow-y-auto">{renderStep()}</div>
       <div className="p-4">

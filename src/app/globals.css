@@ -25,6 +25,26 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+input::placeholder,
+textarea::placeholder {
+  color: #7b6fc2;
+  opacity: 0.85;
+}
+
+input,
+textarea,
+select {
+  color: #151921;
+}
+
+@media (max-width: 1024px) {
+  input:not([type='checkbox']):not([type='radio']),
+  textarea,
+  select {
+    font-size: 16px !important;
+  }
+}
+
 .scrollbar-auto-hide {
   scrollbar-width: thin;
   scrollbar-color: transparent transparent;

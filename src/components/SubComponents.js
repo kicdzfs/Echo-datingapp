@@ -1615,17 +1615,34 @@ export const BlockList = ({
   </div>
 );
 
+const VALID_MBTI_TYPES = [
+  'INTJ',
+  'INTP',
+  'ENTJ',
+  'ENTP',
+  'INFJ',
+  'INFP',
+  'ENFJ',
+  'ENFP',
+  'ISTJ',
+  'ISFJ',
+  'ESTJ',
+  'ESFJ',
+  'ISTP',
+  'ISFP',
+  'ESTP',
+  'ESFP'
+];
+
 export const MBTIModal = ({ questionSet, onClose, onComplete }) => {
   const [answers, setAnswers] = useState({});
-  const [manual, setManual] = useState('');
+  const [manualMode, setManualMode] = useState(false);
+  const [manualValue, setManualValue] = useState('');
+  const [manualError, setManualError] = useState('');
 
   if (!questionSet) return null;
 
   const handleFinish = () => {
-    if (manual.trim()) {
-      onComplete(manual.trim().toUpperCase());
-      return;
-    }
     const result = questionSet.questions
       .map((q, index) => answers[index])
       .join('');
@@ -1634,9 +1651,82 @@ export const MBTIModal = ({ questionSet, onClose, onComplete }) => {
     }
   };
 
-  const canSubmit =
-    manual.trim().length > 0 ||
-    questionSet.questions.every((_, index) => Boolean(answers[index]));
+  const canSubmit = questionSet.questions.every((_, index) =>
+    Boolean(answers[index])
+  );
+
+  const openManual = () => {
+    setManualMode(true);
+    setManualValue('');
+    setManualError('');
+  };
+
+  const handleManualSubmit = () => {
+    const trimmed = manualValue.trim().toUpperCase();
+    if (!VALID_MBTI_TYPES.includes(trimmed)) {
+      setManualError('Please enter a valid MBTI type (e.g. INFJ).');
+      return;
+    }
+    onComplete(trimmed);
+  };
+
+  if (manualMode) {
+    return (
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+        <div className="bg-white rounded-3xl w-full max-w-sm shadow-2xl overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center">
+            <div>
+              <h3 className="font-bold text-lg text-[#151921]">
+                Enter MBTI manually
+              </h3>
+              <p className="text-xs text-gray-500">
+                Type one of the 16 MBTI types to skip the quick check.
+              </p>
+            </div>
+            <button
+              onClick={() => setManualMode(false)}
+              className="text-gray-400"
+            >
+              ✕
+            </button>
+          </div>
+          <div className="p-6 space-y-4">
+            <input
+              value={manualValue}
+              onChange={(e) => {
+                setManualValue(e.target.value.toUpperCase());
+                setManualError('');
+              }}
+              maxLength={4}
+              placeholder="e.g. INFJ"
+              className="w-full border border-gray-200 rounded-2xl p-3 text-center text-lg tracking-widest uppercase outline-none focus:ring-2 focus:ring-[#5F48E6]"
+            />
+            {manualError && (
+              <p className="text-xs text-red-500">{manualError}</p>
+            )}
+            <p className="text-xs text-gray-500">
+              Accepted types: {VALID_MBTI_TYPES.join(', ')}
+            </p>
+          </div>
+          <div className="p-6 pt-0 flex gap-3">
+            <button
+              onClick={() => setManualMode(false)}
+              className="flex-1 py-3 rounded-2xl border border-gray-200 text-[#151921] font-bold"
+            >
+              Back
+            </button>
+            <button
+              onClick={handleManualSubmit}
+              disabled={manualValue.trim().length !== 4}
+              className="flex-1 py-3 rounded-2xl bg-[#5F48E6] text-white font-bold disabled:bg-gray-300"
+            >
+              Save MBTI
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
@@ -1651,8 +1741,7 @@ export const MBTIModal = ({ questionSet, onClose, onComplete }) => {
         </div>
         <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
           <p className="text-sm text-gray-500">
-            {questionSet.title}. Answer honestly or enter your
-            existing MBTI below.
+            {questionSet.title}. Answer honestly to discover your type.
           </p>
           {questionSet.questions.map((question, index) => (
             <div
@@ -1696,32 +1785,32 @@ export const MBTIModal = ({ questionSet, onClose, onComplete }) => {
               </div>
             </div>
           ))}
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-gray-500">
-              Already know your MBTI? Enter it manually
-            </label>
-            <input
-              value={manual}
-              onChange={(e) => setManual(e.target.value)}
-              placeholder="e.g. INFJ"
-              className="w-full border border-gray-200 rounded-xl p-3 text-sm uppercase outline-none focus:ring-2 focus:ring-[#5F48E6]"
-            />
-          </div>
         </div>
-        <div className="p-6 pt-0 flex gap-3">
-          <button
-            onClick={onClose}
-            className="flex-1 py-3 rounded-2xl border border-gray-200 text-[#151921] font-bold"
-          >
-            Later
-          </button>
-          <button
-            disabled={!canSubmit}
-            onClick={handleFinish}
-            className="flex-1 py-3 rounded-2xl bg-[#5F48E6] text-white font-bold disabled:bg-gray-300"
-          >
-            Save MBTI
-          </button>
+        <div className="p-6 pt-0 space-y-3">
+          <div className="flex gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-3 rounded-2xl border border-gray-200 text-[#151921] font-bold"
+            >
+              Later
+            </button>
+            <button
+              disabled={!canSubmit}
+              onClick={handleFinish}
+              className="flex-1 py-3 rounded-2xl bg-[#5F48E6] text-white font-bold disabled:bg-gray-300"
+            >
+              Save MBTI
+            </button>
+          </div>
+          <p className="text-xs text-center text-gray-500">
+            Already have MBTI?{' '}
+            <button
+              onClick={openManual}
+              className="text-[#5F48E6] underline"
+            >
+              Type it here.
+            </button>
+          </p>
         </div>
       </div>
     </div>
