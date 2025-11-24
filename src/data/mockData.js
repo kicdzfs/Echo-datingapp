@@ -528,15 +528,13 @@ export const PARTNER_BRANDS = [
   {
     id: 2,
     name: "Cafe Amazon",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_9466de.png",
+    logo: "/logos/cafe_amazon-logo.svg",
     bg: "bg-white"
   },
   {
     id: 3,
     name: "After You",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_946a83.png",
+    logo: "/logos/after_you-logo.png",
     bg: "bg-white"
   },
   {
@@ -552,20 +550,17 @@ export const MORE_BRANDS_LIST = [
   {
     id: 1,
     name: "Cha Tra Mue",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_946ae1.png"
+    logo: "/logos/cha_tra_mue-logo.png"
   },
   {
     id: 2,
     name: "Kamu Tea",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_946e01.png"
+    logo: "/logos/kamu_tea-logo.png"
   },
   {
     id: 3,
     name: "Swensen's",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_946e7e.png"
+    logo: "/logos/swensens-logo.png"
   },
   {
     id: 4,
@@ -576,26 +571,22 @@ export const MORE_BRANDS_LIST = [
   {
     id: 5,
     name: "Potato Corner",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_946ea4.jpg"
+    logo: "/logos/potato_corner-logo.png"
   },
   {
     id: 6,
     name: "Auntie Anne's",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_9471a8.png"
+    logo: "/logos/auntie_annes-logo.png"
   },
   {
     id: 7,
     name: "Krispy Kreme",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_947201.png"
+    logo: "/logos/krispy_kreme_logo.png"
   },
   {
     id: 8,
     name: "KOI Thé",
-    logo:
-      "https://40esrdjz87r6cpqxzfyaiypaqlbsy6tt2qbivfhh85kyi0uoyn-h833788197.scf.usercontent.goog/image_947243.png"
+    logo: "/logos/koi-the-logo.webp"
   }
 ];
 
