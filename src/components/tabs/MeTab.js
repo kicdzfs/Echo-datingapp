@@ -6,7 +6,6 @@ import {
   User as UserIcon,
   ShoppingBag,
   Crown,
-  Shield,
   Settings,
   LogOut,
   Edit3,
@@ -17,9 +16,9 @@ import {
   PersonalPlaza,
   EMall,
   VIPCenter,
-  SecurityPrivacy,
   SettingsPage,
-  BlockList
+  BlockList,
+  EditProfilePanel
 } from '../SubComponents';
 
 const MeTab = ({
@@ -30,55 +29,81 @@ const MeTab = ({
   blockedUsers = [],
   onUnblockUser,
   onLogout,
-  onChangeSubscription
+  onChangeSubscription,
+  onRedeemCoupon,
+  onCouponStatusChange,
+  onUserChange
 }) => {
-  const [view, setView] = useState('main');
+  const [activeSection, setActiveSection] = useState('main');
   const [isMatched, setIsMatched] = useState(false);
   const currentPlan = user?.subscriptionIndex ?? 0;
   const planName = VIP_PLANS[currentPlan]?.name || 'Free';
+  const profileInfo = user?.profile || {};
+  const displayName =
+    profileInfo.displayName || user?.nickname || user?.name || 'New Echo';
+  const profileLocation =
+    profileInfo.location || user?.location || 'Location hidden';
+  const profileHobbies =
+    (Array.isArray(profileInfo.hobbies) && profileInfo.hobbies.length > 0
+      ? profileInfo.hobbies
+      : user?.interests) || [];
 
-  if (view === 'plaza') {
+  if (activeSection === 'plaza') {
     return (
       <PersonalPlaza
         posts={posts}
-        onBack={() => setView('main')}
+        onBack={() => setActiveSection('main')}
         onLikePost={onLikePost}
         onAddComment={onAddComment}
       />
     );
   }
-  if (view === 'emall') {
-    return <EMall onBack={() => setView('main')} />;
+  if (activeSection === 'emall') {
+    return (
+      <EMall
+        onBack={() => setActiveSection('main')}
+        user={user}
+        onRedeemCoupon={onRedeemCoupon}
+        onCouponStatusChange={onCouponStatusChange}
+      />
+    );
   }
-  if (view === 'vip') {
+  if (activeSection === 'vip') {
     return (
       <VIPCenter
-        onBack={() => setView('main')}
+        onBack={() => setActiveSection('main')}
         currentPlan={currentPlan}
         hasMbti={Boolean(user?.mbti)}
         onSelectPlan={(planIndex) => {
           onChangeSubscription?.(planIndex);
-          setView('main');
+          setActiveSection('main');
         }}
       />
     );
   }
-  if (view === 'security') {
-    return <SecurityPrivacy onBack={() => setView('main')} />;
-  }
-  if (view === 'settings') {
+  if (activeSection === 'editProfile') {
     return (
-      <SettingsPage
-        onBack={() => setView('main')}
-        onOpenBlockList={() => setView('blocked')}
+      <EditProfilePanel
+        key={user?.id || user?.nickname || 'current-user'}
+        user={user}
+        onUserChange={onUserChange}
+        onBack={() => setActiveSection('main')}
       />
     );
   }
-  if (view === 'blocked') {
+  if (activeSection === 'settings') {
+    return (
+      <SettingsPage
+        onBack={() => setActiveSection('main')}
+        onOpenBlockList={() => setActiveSection('blocked')}
+      />
+    );
+  }
+  if (activeSection === 'blocked') {
     return (
       <BlockList
         blockedUsers={blockedUsers}
-        onBack={() => setView('settings')}
+        onBack={() => setActiveSection('settings')}
         onUnblockUser={onUnblockUser}
       />
     );
@@ -94,16 +119,15 @@ const MeTab = ({
             </div>
             <div className="pt-1">
               <h2 className="text-2xl font-bold text-[#151921]">
-                {user?.nickname || user?.name || 'New Echo'}
+                {displayName}
               </h2>
               <div className="text-xs text-gray-500 mt-0.5 mb-2">
-                {user?.mbti || 'MBTI pending'} ·{' '}
-                {user?.constellation || '—'} <br />{' '}
-                {user?.location || 'Location hidden'}
+                {user?.mbti || 'MBTI pending'} · {user?.constellation || '—'}{' '}
+                <br /> {profileLocation}
               </div>
-              {user?.interests?.length > 0 && (
+              {profileHobbies.length > 0 && (
                 <div className="flex flex-wrap gap-1 text-[10px] text-[#5F48E6]">
-                  {user.interests.slice(0, 3).map((interest) => (
+                  {profileHobbies.slice(0, 3).map((interest) => (
                     <span
                       key={interest}
                       className="bg-[#F3F0FF] px-2 py-0.5 rounded-md italic"
@@ -115,7 +139,10 @@ const MeTab = ({
               )}
             </div>
           </div>
-          <button className="bg-[#F3F0FF] text-[#5F48E6] px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 hover:bg-[#E0D9FF] transition-colors">
+          <button
+            onClick={() => setActiveSection('editProfile')}
+            className="bg-[#F3F0FF] text-[#5F48E6] px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 hover:bg-[#E0D9FF] transition-colors"
+          >
             <Edit3 className="w-3 h-3" /> Edit
           </button>
           <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2 bg-[#FBFAF3] border border-[#0BAB7C]/20 text-[#0BAB7C] text-[10px] px-3 py-1 rounded-full font-medium shadow-sm flex items-center gap-1 w-[90%] justify-center">
@@ -149,7 +176,7 @@ const MeTab = ({
         </div>
 
         <div
-          onClick={() => setView('plaza')}
+          onClick={() => setActiveSection('plaza')}
           className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
         >
           <div className="flex items-center gap-4">
@@ -169,7 +196,7 @@ const MeTab = ({
         </div>
 
         <div
-          onClick={() => setView('emall')}
+          onClick={() => setActiveSection('emall')}
           className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
         >
           <div className="flex items-center gap-4">
@@ -189,7 +216,7 @@ const MeTab = ({
         </div>
 
         <div
-          onClick={() => setView('vip')}
+          onClick={() => setActiveSection('vip')}
           className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
         >
           <div className="flex items-center gap-4">
@@ -209,27 +236,7 @@ const MeTab = ({
         </div>
 
         <div
-          onClick={() => setView('security')}
-          className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center text-red-500">
-              <Shield className="w-5 h-5" />
-            </div>
-            <div>
-              <h4 className="text-sm font-bold text-[#151921]">
-                Security and Privacy
-              </h4>
-              <p className="text-xs text-gray-400">
-                Protect your data
-              </p>
-            </div>
-          </div>
-          <ChevronRight className="w-5 h-5 text-gray-300" />
-        </div>
-
-        <div
-          onClick={() => setView('settings')}
+          onClick={() => setActiveSection('settings')}
           className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
         >
           <div className="flex items-center gap-4">

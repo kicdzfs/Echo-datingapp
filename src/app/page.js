@@ -258,7 +258,21 @@ export default function App() {
       bio: 'New to Echo! Say hi 👋',
       signupMethod: pendingUser.signupMethod,
       subscriptionIndex: 0,
-      subscription: 'Free'
+      subscription: 'Free',
+      points: 800,
+      coupons: [],
+      profile: {
+        displayName:
+          pendingUser.nickname || pendingUser.username || 'Echo Friend',
+        age: getAge(pendingUser.dob) || '—',
+        gender: pendingUser.gender || 'Not shared',
+        education: '',
+        hobbies: pendingUser.interests?.length
+          ? pendingUser.interests
+          : ['Travel'],
+        agePreference: 'Any',
+        location: pendingUser.location || 'Unknown'
+      }
     };
     finalizeUser(newUser);
   };
@@ -276,7 +290,9 @@ export default function App() {
       ...user,
       nickname: user.nickname || user.name,
       subscriptionIndex: planIndexFromName(user.subscription),
-      subscription: user.subscription || 'Free'
+      subscription: user.subscription || 'Free',
+      points: typeof user.points === 'number' ? user.points : 800,
+      coupons: Array.isArray(user.coupons) ? user.coupons : []
     };
     setCurrentUser(enriched);
     setAuthStage('app');
@@ -304,6 +320,60 @@ export default function App() {
           }
         : prev
     );
+  };
+
+  const handleRedeemCoupon = (coupon, cost) => {
+    if (!coupon || typeof cost !== 'number') return;
+    setCurrentUser((prev) => {
+      if (!prev || (prev.points ?? 0) < cost) return prev;
+      const newCoupon = {
+        ownedId: Date.now(),
+        couponId: coupon.id,
+        name: coupon.name,
+        brand: coupon.brand,
+        image: coupon.image,
+        description: coupon.shortDescription,
+        status: 'ready',
+        redeemedAt: Date.now(),
+        validUntil: coupon.validUntil,
+        location: coupon.location,
+        pointsSpent: cost
+      };
+      return {
+        ...prev,
+        points: (prev.points ?? 0) - cost,
+        coupons: [newCoupon, ...(prev.coupons || [])]
+      };
+    });
+  };
+
+  const handleCouponStatusChange = (ownedId, nextStatus) => {
+    setCurrentUser((prev) => {
+      if (!prev || !prev.coupons) return prev;
+      return {
+        ...prev,
+        coupons: prev.coupons.map((coupon) =>
+          coupon.ownedId === ownedId
+            ? {
+                ...coupon,
+                status: nextStatus,
+                usedAt:
+                  nextStatus === 'used' ? Date.now() : coupon.usedAt
+              }
+            : coupon
+        )
+      };
+    });
+  };
+
+  const handleUserProfileChange = (nextUser) => {
+    setCurrentUser((prev) => {
+      if (!prev) return prev;
+      if (typeof nextUser === 'function') {
+        return nextUser(prev);
+      }
+      return nextUser;
+    });
   };
 
   const handleMbtiComplete = (value) => {
@@ -420,6 +490,9 @@ export default function App() {
               onUnblockUser={handleUnblockUser}
               onLogout={handleLogout}
               onChangeSubscription={handleSubscriptionChange}
+              onRedeemCoupon={handleRedeemCoupon}
+              onCouponStatusChange={handleCouponStatusChange}
+              onUserChange={handleUserProfileChange}
             />
           )}
         </div>

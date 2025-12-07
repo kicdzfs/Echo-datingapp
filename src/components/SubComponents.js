@@ -11,11 +11,11 @@ import {
   Send,
   Flag,
   ChevronRight,
+  ChevronDown,
   ShoppingBag,
   Crown,
   Activity,
   Settings,
-  Shield,
   Grid,
   Info,
   AlertTriangle,
@@ -24,14 +24,19 @@ import {
   HeartHandshake,
   UserX,
   Bell,
-  Eye
+  Eye,
+  Calendar,
+  MapPin,
+  User,
+  Moon,
+  LifeBuoy,
+  Database
 } from 'lucide-react';
 import {
   GAMES_LIST,
   RECS_LIST,
   CHAT_HISTORY,
   VIP_PLANS,
-  TERMS_LIST,
   PARTNER_BRANDS,
   MORE_BRANDS_LIST,
   MALL_ITEMS
@@ -1218,8 +1223,52 @@ export const PersonalPlaza = ({
   );
 };
 
-export const EMall = ({ onBack }) => {
+export const EMall = ({
+  onBack,
+  user,
+  onRedeemCoupon,
+  onCouponStatusChange
+}) => {
   const [showMore, setShowMore] = useState(false);
+  const [section, setSection] = useState('mall');
+  const [selectedCoupon, setSelectedCoupon] = useState(null);
+  const [showTerms, setShowTerms] = useState(false);
+  const [couponTab, setCouponTab] = useState('ready');
+  const tierOrder = ['Free', 'Premium', 'Infinity'];
+  const tierStyles = {
+    Free: 'bg-gray-100 text-gray-600',
+    Premium: 'bg-[#FFF1C2] text-[#916400]',
+    Infinity: 'bg-[#E5D1FF] text-[#5F2DB2]'
+  };
+
+  const userTier = user?.subscription || 'Free';
+  const userPoints = user?.points ?? 0;
+  const ownedCoupons = Array.isArray(user?.coupons) ? user.coupons : [];
+  const readyCoupons = ownedCoupons.filter((coupon) => coupon.status !== 'used');
+  const usedCoupons = ownedCoupons.filter((coupon) => coupon.status === 'used');
+
+  const sortTiers = (tiers) =>
+    [...tiers].sort((a, b) => tierOrder.indexOf(a) - tierOrder.indexOf(b));
+
+  const openDetail = (coupon) => {
+    setSelectedCoupon(coupon);
+    setShowTerms(false);
+  };
+
+  const closeDetails = () => {
+    setSelectedCoupon(null);
+    setShowTerms(false);
+  };
+
+  const handleRedeem = (coupon) => {
+    if (!coupon) return;
+    const eligible = coupon.tierAccess.includes(userTier);
+    const requiredPoints = coupon.points[userTier];
+    if (!eligible || typeof requiredPoints !== 'number') return;
+    if (userPoints < requiredPoints) return;
+    onRedeemCoupon?.(coupon, requiredPoints);
+    closeDetails();
+  };
 
   if (showMore) {
     return (
@@ -1257,13 +1306,342 @@ export const EMall = ({ onBack }) => {
     );
   }
 
+  const renderBrandRow = () => (
+    <div className="flex justify-between mb-8 px-2">
+      {PARTNER_BRANDS.map((brand, index) => (
+        <div
+          key={index}
+          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md ${brand.bg} overflow-hidden border-2 border-white cursor-pointer hover:scale-105 transition-transform`}
+        >
+          {brand.logo ? (
+            <img
+              src={brand.logo}
+              alt={brand.name}
+              className="w-full h-full object-contain p-1"
+            />
+          ) : (
+            <span className="text-[8px] text-center font-bold leading-tight px-1">
+              {brand.name}
+            </span>
+          )}
+        </div>
+      ))}
+      <div
+        onClick={() => setShowMore(true)}
+        className="w-14 h-14 rounded-full flex items-center justify-center shadow-md bg-[#D7D0FF] overflow-hidden border-2 border-white cursor-pointer hover:scale-105 transition-transform"
+      >
+        <Grid className="w-6 h-6 text-white" />
+      </div>
+    </div>
+  );
+
+  const renderMallGrid = () => (
+    <div className="space-y-6">
+      {renderBrandRow()}
+      <div className="grid grid-cols-2 gap-4">
+        {MALL_ITEMS.map((item) => {
+          const sortedAccess = sortTiers(item.tierAccess);
+          const bestTier = sortedAccess[sortedAccess.length - 1];
+          const minPoints = item.points[bestTier];
+          return (
+            <button
+              key={item.id}
+              onClick={() => openDetail(item)}
+              className="bg-white p-3 rounded-2xl shadow-sm flex flex-col text-left border border-white/70 hover:-translate-y-1 transition-transform duration-200"
+            >
+              <div className="w-full h-32 rounded-xl overflow-hidden mb-3">
+                <img
+                  src={item.image}
+                  alt={item.name}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <p className="text-[11px] uppercase tracking-widest text-gray-500">
+                    {item.brand}
+                  </p>
+                  <h4 className="text-base font-bold text-[#151921]">
+                    {item.name}
+                  </h4>
+                </div>
+                <div className="text-right">
+                  <p className="text-[#5F48E6] font-bold text-sm">
+                    {minPoints} pts
+                  </p>
+                  <p className="text-[10px] text-gray-500 font-semibold">
+                    {bestTier}+
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 mb-3">
+                {item.shortDescription}
+              </p>
+              <div className="flex flex-wrap gap-1">
+                {sortedAccess.map((tier) => (
+                  <span
+                    key={tier}
+                    className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                      tierStyles[tier]
+                    }`}
+                  >
+                    {tier}
+                  </span>
+                ))}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  const formatDate = (timestamp) => {
+    if (!timestamp) return '';
+    try {
+      return new Date(timestamp).toLocaleDateString();
+    } catch (err) {
+      return '';
+    }
+  };
+
+  const renderCouponOwned = (coupon, isReady) => (
+    <div
+      key={coupon.ownedId}
+      className="bg-white p-3 rounded-2xl shadow-sm flex gap-3 border border-white/70"
+    >
+      <div className="w-20 h-20 rounded-2xl overflow-hidden">
+        <img
+          src={coupon.image}
+          alt={coupon.name}
+          className="w-full h-full object-cover"
+        />
+      </div>
+      <div className="flex-1">
+        <p className="text-[11px] uppercase tracking-widest text-gray-500">
+          {coupon.brand}
+        </p>
+        <h4 className="text-base font-bold text-[#151921]">
+          {coupon.name}
+        </h4>
+        <p className="text-xs text-gray-500 mt-1">
+          {coupon.description}
+        </p>
+        <p className="text-[10px] text-gray-400 mt-1">
+          {coupon.validUntil}
+        </p>
+      </div>
+      <div className="flex flex-col items-end justify-between">
+        <span className="text-xs font-bold text-[#5F48E6]">
+          -{coupon.pointsSpent} pts
+        </span>
+        {isReady ? (
+          <button
+            onClick={() => onCouponStatusChange?.(coupon.ownedId, 'used')}
+            className="text-[10px] px-2 py-1 rounded-full bg-[#151921] text-white"
+          >
+            Mark used
+          </button>
+        ) : (
+          <span className="text-[10px] text-gray-500">
+            Used {formatDate(coupon.usedAt)}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderMyCoupons = () => (
+    <div className="space-y-6">
+      <div className="bg-white rounded-3xl p-5 shadow-sm border border-white">
+        <div className="flex items-center gap-3">
+          <div className="w-14 h-14 rounded-full bg-[#F3F0FF] flex items-center justify-center text-3xl">
+            {user?.avatar || '🙂'}
+          </div>
+          <div>
+            <h3 className="text-lg font-bold text-[#151921]">
+              {user?.nickname || user?.name || 'Echo friend'}
+            </h3>
+            <p className="text-sm text-gray-500">{userPoints} points available</p>
+          </div>
+        </div>
+      </div>
+      <div className="flex bg-gray-100 rounded-full p-1">
+        <button
+          onClick={() => setCouponTab('ready')}
+          className={`flex-1 px-3 py-2 rounded-full text-sm font-semibold transition ${
+            couponTab === 'ready'
+              ? 'bg-white shadow text-[#151921]'
+              : 'text-gray-500'
+          }`}
+        >
+          Ready to use ({readyCoupons.length})
+        </button>
+        <button
+          onClick={() => setCouponTab('used')}
+          className={`flex-1 px-3 py-2 rounded-full text-sm font-semibold transition ${
+            couponTab === 'used'
+              ? 'bg-white shadow text-[#151921]'
+              : 'text-gray-500'
+          }`}
+        >
+          Used / Expired ({usedCoupons.length})
+        </button>
+      </div>
+      <div className="space-y-3">
+        {couponTab === 'ready'
+          ? readyCoupons.length === 0 && (
+              <div className="text-center text-sm text-gray-400 py-10">
+                No coupons yet.
+              </div>
+            )
+          : usedCoupons.length === 0 && (
+              <div className="text-center text-sm text-gray-400 py-10">
+                No used coupons.
+              </div>
+            )}
+        {(couponTab === 'ready' ? readyCoupons : usedCoupons).map((coupon) =>
+          renderCouponOwned(coupon, couponTab === 'ready')
+        )}
+        {couponTab === 'used' && (
+          <button
+            onClick={() => setSection('mall')}
+            className="w-full text-sm text-[#5F48E6] font-semibold py-3"
+          >
+            Get more coupons
+          </button>
+        )}
+      </div>
+    </div>
+  );
+
+  if (selectedCoupon) {
+    const sortedAccess = sortTiers(selectedCoupon.tierAccess);
+    const eligible = selectedCoupon.tierAccess.includes(userTier);
+    const requiredPoints = eligible ? selectedCoupon.points[userTier] : null;
+    const hasEnoughPoints =
+      eligible && typeof requiredPoints === 'number' && userPoints >= requiredPoints;
+    const redeemDisabled =
+      !eligible || typeof requiredPoints !== 'number' || !hasEnoughPoints;
+    const redeemLabel = !eligible
+      ? `${userTier} not eligible`
+      : typeof requiredPoints !== 'number'
+      ? 'Unavailable'
+      : hasEnoughPoints
+      ? `Redeem for ${requiredPoints} pts`
+      : `Need ${requiredPoints} pts`;
+
+    return (
+      <div className="absolute inset-0 bg-[#F3F0FF] z-40 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+        <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+          <button onClick={closeDetails}>
+            <ArrowLeft className="w-6 h-6 text-[#151921]" />
+          </button>
+          <h2 className="font-bold text-lg text-[#151921]">Coupon Details</h2>
+        </div>
+        <div className="relative h-52 w-full flex-shrink-0">
+          <img
+            src={selectedCoupon.image}
+            alt={selectedCoupon.name}
+            className="w-full h-full object-cover"
+          />
+        </div>
+        <div className="flex-1 overflow-y-auto bg-white p-6 space-y-5">
+          <div>
+            <p className="text-xs uppercase tracking-widest text-gray-500">
+              {selectedCoupon.brand}
+            </p>
+            <h3 className="text-2xl font-bold text-[#151921]">
+              {selectedCoupon.name}
+            </h3>
+            <p className="text-sm text-gray-600 mt-2">
+              {selectedCoupon.description}
+            </p>
+          </div>
+          <div className="space-y-2 text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-[#5F48E6]" />
+              <span>{selectedCoupon.validUntil}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-[#0BAB7C]" />
+              <span>{selectedCoupon.location}</span>
+            </div>
+            <div className="text-xs text-gray-500">
+              Available points: {userPoints}
+            </div>
+          </div>
+          <div className="border border-gray-100 rounded-2xl divide-y">
+            {sortedAccess.map((tier) => (
+              <div
+                key={tier}
+                className="flex items-center justify-between p-3"
+              >
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
+                      tierStyles[tier]
+                    }`}
+                  >
+                    {tier}
+                  </span>
+                  <span className="text-sm text-[#151921]">
+                    Eligible tier
+                  </span>
+                </div>
+                <span className="text-sm font-bold text-[#5F48E6]">
+                  {selectedCoupon.points[tier]} pts
+                </span>
+              </div>
+            ))}
+          </div>
+          <div>
+            <button
+              onClick={() => setShowTerms((prev) => !prev)}
+              className="w-full flex items-center justify-between bg-gray-50 px-4 py-3 rounded-2xl text-sm font-semibold text-[#151921]"
+            >
+              Terms & Conditions
+              <ChevronDown
+                className={`w-4 h-4 transition-transform ${
+                  showTerms ? 'rotate-180' : ''
+                }`}
+              />
+            </button>
+            {showTerms && (
+              <ul className="mt-3 space-y-2 text-sm text-gray-600 list-disc list-inside">
+                {selectedCoupon.terms.map((term, idx) => (
+                  <li key={idx}>{term}</li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+        <div className="bg-white px-6 py-4 border-t border-gray-100">
+          <button
+            onClick={() => handleRedeem(selectedCoupon)}
+            disabled={redeemDisabled}
+            className={`w-full py-3 rounded-2xl font-semibold shadow-lg transition ${
+              redeemDisabled
+                ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                : 'bg-[#151921] text-white active:scale-[0.98]'
+            }`}
+          >
+            {redeemLabel}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
         </button>
-        <h2 className="font-bold text-lg text-[#151921]">E Mall</h2>
+        <h2 className="font-bold text-lg text-[#151921]">
+          {section === 'mall' ? 'E Mall' : 'My Coupons'}
+        </h2>
       </div>
       <div className="w-full h-48 relative flex-shrink-0">
         <img
@@ -1284,57 +1662,29 @@ export const EMall = ({ onBack }) => {
         </div>
       </div>
       <div className="flex-1 overflow-y-auto bg-[#FBFAF3] px-4 pt-6 pb-24 -mt-4 rounded-t-3xl relative z-10">
-        <div className="flex justify-between mb-8 px-2">
-          {PARTNER_BRANDS.map((brand, index) => (
-            <div
-              key={index}
-              className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md ${brand.bg} overflow-hidden border-2 border-white cursor-pointer hover:scale-105 transition-transform`}
-            >
-              {brand.logo ? (
-                <img
-                  src={brand.logo}
-                  alt={brand.name}
-                  className="w-full h-full object-contain p-1"
-                />
-              ) : (
-                <span className="text-[8px] text-center font-bold leading-tight px-1">
-                  {brand.name}
-                </span>
-              )}
-            </div>
-          ))}
-          <div
-            onClick={() => setShowMore(true)}
-            className="w-14 h-14 rounded-full flex items-center justify-center shadow-md bg-[#D7D0FF] overflow-hidden border-2 border-white cursor-pointer hover:scale-105 transition-transform"
-          >
-            <Grid className="w-6 h-6 text-white" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-4">
-          {MALL_ITEMS.map((item) => (
-            <div
-              key={item.id}
-              className="bg-[#9370DB] p-2 rounded-2xl shadow-md flex flex-col transform hover:scale-105 transition-transform duration-200"
-            >
-              <div className="w-full h-32 bg-white rounded-xl overflow-hidden mb-2 relative">
-                <img
-                  src={item.image}
-                  alt={item.name}
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              <div className="flex items-center justify-between px-2 mt-auto pb-1">
-                <div className="flex items-center gap-1 text-white">
-                  <ShoppingBag className="w-3 h-3" />
-                  <span className="text-[10px] font-bold">BUY NOW</span>
-                </div>
-                <span className="text-white font-bold text-sm">
-                  {item.price}
-                </span>
-              </div>
-            </div>
-          ))}
-        </div>
+        {section === 'mall' ? renderMallGrid() : renderMyCoupons()}
+      </div>
+      <div className="bg-white border-t border-gray-100 flex">
+        <button
+          onClick={() => setSection('mall')}
+          className={`flex-1 py-3 text-sm font-semibold ${
+            section === 'mall'
+              ? 'text-[#5F48E6] border-b-2 border-[#5F48E6]'
+              : 'text-gray-400'
+          }`}
+        >
+          E Mall
+        </button>
+        <button
+          onClick={() => setSection('my')}
+          className={`flex-1 py-3 text-sm font-semibold ${
+            section === 'my'
+              ? 'text-[#5F48E6] border-b-2 border-[#5F48E6]'
+              : 'text-gray-400'
+          }`}
+        >
+          My Coupons
+        </button>
       </div>
     </div>
   );
@@ -1450,8 +1800,50 @@ export const VIPCenter = ({
   );
 };
 
-export const SecurityPrivacy = ({ onBack }) => {
-  const [selectedTerm, setSelectedTerm] = useState(null);
+export const SettingsPage = ({ onBack, onOpenBlockList }) => {
+  const [darkMode, setDarkMode] = useState(false);
+
+  const placeholder = (label) => {
+    alert(`${label} coming soon`);
+  };
+
+  const optionRows = [
+    {
+      key: 'account',
+      icon: User,
+      label: 'Account',
+      desc: 'Profile, login and privacy settings',
+      onPress: () => placeholder('Account settings')
+    },
+    {
+      key: 'chat',
+      icon: MessageSquare,
+      label: 'Chatting Settings',
+      desc: 'Sounds, reactions and message tools',
+      onPress: () => placeholder('Chatting settings')
+    },
+    {
+      key: 'about',
+      icon: Info,
+      label: 'About',
+      desc: 'Version, policies and acknowledgements',
+      onPress: () => placeholder('About Echo')
+    },
+    {
+      key: 'help',
+      icon: LifeBuoy,
+      label: 'Help',
+      desc: 'FAQs and contact support',
+      onPress: () => placeholder('Help center')
+    },
+    {
+      key: 'storage',
+      icon: Database,
+      label: 'Manage Storage',
+      desc: 'Clear cache and downloads',
+      onPress: () => placeholder('Manage storage')
+    }
+  ];
 
   return (
     <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
@@ -1459,117 +1851,119 @@ export const SecurityPrivacy = ({ onBack }) => {
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
         </button>
-        <h2 className="font-bold text-lg text-[#151921]">
-          Security & Privacy
-        </h2>
+        <h2 className="font-bold text-lg text-[#151921]">Settings</h2>
       </div>
-      {selectedTerm ? (
-        <div className="flex-1 overflow-y-auto p-6 bg-white">
-          <button
-            onClick={() => setSelectedTerm(null)}
-            className="text-[#5F48E6] text-sm font-bold mb-4 flex items-center gap-1"
-          >
-            <ArrowLeft className="w-4 h-4" /> Back to list
-          </button>
-          <h2 className="text-2xl font-bold text-[#151921] mb-4">
-            {selectedTerm.title}
-          </h2>
-          <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
-            {selectedTerm.content}
-          </p>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
-          {TERMS_LIST.map((term, i) => (
-            <div
-              key={i}
-              onClick={() => setSelectedTerm(term)}
-              className="bg-white p-4 rounded-xl shadow-sm flex justify-between items-center cursor-pointer hover:bg-gray-50"
-            >
-              <span className="font-medium text-[#151921]">
-                {term.title}
-              </span>
-              <ChevronRight className="w-4 h-4 text-gray-300" />
+      <div className="flex-1 overflow-y-auto p-4 space-y-6">
+        <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 border border-white">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+                Account
+              </h3>
+              <p className="text-[11px] text-gray-400">
+                Security & Privacy tools live here now
+              </p>
             </div>
+            <button
+              onClick={onOpenBlockList}
+              className="text-[11px] text-[#5F48E6] font-semibold"
+            >
+              Block list
+            </button>
+          </div>
+          <button
+            onClick={optionRows[0].onPress}
+            className="w-full flex items-center justify-between py-2"
+          >
+            <div className="flex items-center gap-3">
+              <User className="w-5 h-5 text-[#5F48E6]" />
+              <div className="text-left">
+                <p className="text-sm font-semibold text-[#151921]">
+                  Account overview
+                </p>
+                <p className="text-xs text-gray-400">
+                  Phone, emails, linked social accounts
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-300" />
+          </button>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 border border-white">
+          <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
+            App controls
+          </h3>
+          <button
+            onClick={optionRows[1].onPress}
+            className="w-full flex items-center justify-between py-2"
+          >
+            <div className="flex items-center gap-3">
+              <MessageSquare className="w-5 h-5 text-indigo-400" />
+              <div className="text-left">
+                <p className="text-sm font-semibold text-[#151921]">
+                  Chatting Settings
+                </p>
+                <p className="text-xs text-gray-400">
+                  Read receipts, prompts and filters
+                </p>
+              </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-300" />
+          </button>
+          <div className="flex items-center justify-between py-2">
+            <div className="flex items-center gap-3">
+              <Moon className="w-5 h-5 text-purple-400" />
+              <div>
+                <p className="text-sm font-semibold text-[#151921]">
+                  Dark Mode
+                </p>
+                <p className="text-xs text-gray-400">
+                  {darkMode ? 'Enabled' : 'Disabled'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setDarkMode((prev) => !prev)}
+              className={`w-12 h-6 rounded-full relative transition-colors ${
+                darkMode ? 'bg-[#5F48E6]' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${
+                  darkMode ? 'right-0.5' : 'left-0.5'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 shadow-sm space-y-3 border border-white">
+          {optionRows.slice(2).map((option) => (
+            <button
+              key={option.key}
+              onClick={option.onPress}
+              className="w-full flex items-center justify-between py-2"
+            >
+              <div className="flex items-center gap-3">
+                <option.icon className="w-5 h-5 text-gray-500" />
+                <div className="text-left">
+                  <p className="text-sm font-semibold text-[#151921]">
+                    {option.label}
+                  </p>
+                  <p className="text-xs text-gray-400">
+                    {option.desc}
+                  </p>
+                </div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300" />
+            </button>
           ))}
         </div>
-      )}
+      </div>
     </div>
   );
 };
-
-export const SettingsPage = ({ onBack, onOpenBlockList }) => (
-  <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
-    <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
-      <button onClick={onBack}>
-        <ArrowLeft className="w-6 h-6 text-[#151921]" />
-      </button>
-      <h2 className="font-bold text-lg text-[#151921]">Settings</h2>
-    </div>
-    <div className="flex-1 overflow-y-auto p-4 space-y-6">
-      <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-          Account
-        </h3>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Settings className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-[#151921]">
-              Edit Profile
-            </span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-300" />
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Shield className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-[#151921]">
-              Change Password
-            </span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-300" />
-        </div>
-      </div>
-      <div className="bg-white rounded-2xl p-4 shadow-sm space-y-4">
-        <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider">
-          Preferences
-        </h3>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Bell className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-[#151921]">
-              Notifications
-            </span>
-          </div>
-          <div className="w-10 h-6 bg-[#5F48E6] rounded-full relative">
-            <div className="w-4 h-4 bg-white rounded-full absolute top-1 right-1" />
-          </div>
-        </div>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Eye className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-[#151921]">
-              Show Online Status
-            </span>
-          </div>
-          <div className="w-10 h-6 bg-[#5F48E6] rounded-full relative">
-            <div className="w-4 h-4 bg-white rounded-full absolute top-1 right-1" />
-          </div>
-        </div>
-        <div
-          className="flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
-          onClick={onOpenBlockList}
-        >
-          <div className="flex items-center gap-3">
-            <UserX className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-[#151921]">Block list</span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-gray-300" />
-        </div>
-      </div>
-    </div>
-  </div>
-);
 
 export const BlockList = ({
   blockedUsers = [],
@@ -1614,6 +2008,247 @@ export const BlockList = ({
     </div>
   </div>
 );
+
+const buildProfileDraft = (user) => ({
+  displayName:
+    user?.profile?.displayName || user?.nickname || user?.name || 'New Echo',
+  age: user?.profile?.age || '',
+  gender: user?.profile?.gender || '',
+  education: user?.profile?.education || '',
+  hobbies: Array.isArray(user?.profile?.hobbies)
+    ? user.profile.hobbies
+    : [],
+  agePreference: user?.profile?.agePreference || '',
+  location: user?.profile?.location || ''
+});
+
+export const EditProfilePanel = ({ user, onUserChange, onBack }) => {
+  const [profileDraft, setProfileDraft] = useState(() => buildProfileDraft(user));
+  const [mbtiDraft, setMbtiDraft] = useState(user?.mbti || '');
+  const [editingField, setEditingField] = useState(null);
+  const [inputValue, setInputValue] = useState('');
+
+  const mergeAndNotify = (nextProfile, nextMbti = mbtiDraft) => {
+    onUserChange?.({
+      ...user,
+      mbti: nextMbti,
+      profile: {
+        ...user?.profile,
+        ...nextProfile
+      }
+    });
+  };
+
+  const startEditing = (field) => {
+    const currentValue = (() => {
+      if (field === 'mbti') return mbtiDraft;
+      if (field === 'hobbies') return profileDraft.hobbies.join(', ');
+      return profileDraft[field] || '';
+    })();
+    setEditingField(field);
+    setInputValue(currentValue);
+  };
+
+  const commitEdit = () => {
+    if (!editingField) return;
+    const trimmed = inputValue.trim();
+    if (editingField === 'mbti') {
+      const sanitized = trimmed.toUpperCase().slice(0, 4);
+      setMbtiDraft(sanitized);
+      mergeAndNotify(profileDraft, sanitized);
+    } else {
+      const updatedProfile = { ...profileDraft };
+      if (editingField === 'hobbies') {
+        updatedProfile.hobbies = trimmed
+          ? trimmed.split(',').map((hobby) => hobby.trim()).filter(Boolean)
+          : [];
+      } else {
+        updatedProfile[editingField] = trimmed;
+      }
+      setProfileDraft(updatedProfile);
+      mergeAndNotify(updatedProfile, mbtiDraft);
+    }
+    setEditingField(null);
+    setInputValue('');
+  };
+
+  const handleInputKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      commitEdit();
+    }
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      setEditingField(null);
+      setInputValue('');
+    }
+  };
+
+  const previewProfile = () => {
+    if (editingField) {
+      commitEdit();
+    }
+    mergeAndNotify(profileDraft, mbtiDraft);
+    console.log('Preview placeholder – real preview flow will be added later');
+    onBack?.();
+  };
+
+  const fields = [
+    {
+      key: 'mbti',
+      label: 'MBTI type',
+      value: mbtiDraft || 'Tap to update',
+      section: 'Core personality info'
+    },
+    {
+      key: 'age',
+      label: 'Age',
+      value: profileDraft.age || 'Add age',
+      section: 'Core personality info'
+    },
+    {
+      key: 'gender',
+      label: 'Gender type',
+      value: profileDraft.gender || 'Add gender',
+      section: 'Core personality info'
+    },
+    {
+      key: 'education',
+      label: 'Education',
+      value: profileDraft.education || 'Add education',
+      section: 'Core personality info'
+    },
+    {
+      key: 'hobbies',
+      label: 'Hobbies',
+      value:
+        profileDraft.hobbies.length > 0
+          ? profileDraft.hobbies.join(', ')
+          : 'Add hobbies',
+      section: 'Lifestyle & interests'
+    },
+    {
+      key: 'agePreference',
+      label: 'Age preference',
+      value: profileDraft.agePreference || 'Add age preference',
+      section: 'Preferences'
+    },
+    {
+      key: 'location',
+      label: 'Location',
+      value: profileDraft.location || 'Add location',
+      section: 'Preferences'
+    }
+  ];
+
+  const groupedSections = fields.reduce((acc, field) => {
+    if (!acc[field.section]) acc[field.section] = [];
+    acc[field.section].push(field);
+    return acc;
+  }, {});
+
+  const currentDisplayName =
+    profileDraft.displayName || user?.nickname || user?.name || 'New Echo';
+
+  return (
+    <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+      <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+        <button onClick={onBack}>
+          <ArrowLeft className="w-6 h-6 text-[#151921]" />
+        </button>
+        <h2 className="font-bold text-lg text-[#151921]">
+          Edit Profile
+        </h2>
+      </div>
+      <div className="flex-1 overflow-y-auto p-5 space-y-6">
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-white flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-[#F3F0FF] flex items-center justify-center text-3xl border border-white">
+            {user?.avatar || '🙂'}
+          </div>
+          <div>
+            <p className="text-xs uppercase text-gray-400 tracking-widest">
+              @{user?.username || user?.nickname || 'echo-user'}
+            </p>
+            <h3 className="text-2xl font-bold text-[#151921]">
+              {currentDisplayName}
+            </h3>
+            <p className="text-xs text-gray-500 mt-1">
+              {mbtiDraft || 'MBTI pending'} · {user?.constellation || '—'}
+            </p>
+          </div>
+        </div>
+
+        {Object.entries(groupedSections).map(([section, sectionFields]) => (
+          <div key={section}>
+            <h3 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">
+              {section}
+            </h3>
+            <div className="space-y-3">
+              {sectionFields.map((field) => (
+                <div
+                  key={field.key}
+                  className="bg-white rounded-2xl p-4 shadow-sm border border-white/70"
+                >
+                  <button
+                    type="button"
+                    className="w-full flex items-center justify-between gap-3 text-left"
+                    onClick={() => startEditing(field.key)}
+                  >
+                    <div>
+                      <p className="text-[11px] uppercase tracking-widest text-gray-400">
+                        {field.label}
+                      </p>
+                      <p className="text-sm font-semibold text-[#151921]">
+                        {field.value}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                  </button>
+                  {editingField === field.key && (
+                    <div className="mt-3 space-y-2">
+                      {field.key === 'hobbies' ? (
+                        <textarea
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          onBlur={commitEdit}
+                          onKeyDown={handleInputKeyDown}
+                          rows={2}
+                          placeholder="Comma separated"
+                          className="w-full border border-gray-200 rounded-2xl p-3 text-sm outline-none focus:ring-2 focus:ring-[#5F48E6]"
+                        />
+                      ) : (
+                        <input
+                          value={inputValue}
+                          onChange={(e) => setInputValue(e.target.value)}
+                          onBlur={commitEdit}
+                          onKeyDown={handleInputKeyDown}
+                          maxLength={field.key === 'mbti' ? 4 : 60}
+                          className="w-full border border-gray-200 rounded-2xl p-3 text-sm outline-none focus:ring-2 focus:ring-[#5F48E6]"
+                          placeholder={`Update ${field.label.toLowerCase()}`}
+                        />
+                      )}
+                      <p className="text-[10px] text-gray-400">
+                        Press Enter or click outside to save.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="bg-white border-t border-gray-100 px-5 py-4">
+        <button
+          onClick={previewProfile}
+          className="w-full py-3 rounded-full bg-[#5F48E6] text-white font-semibold shadow-lg active:scale-[0.98] transition"
+        >
+          Preview
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const VALID_MBTI_TYPES = [
   'INTJ',

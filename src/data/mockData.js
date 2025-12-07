@@ -44,25 +44,78 @@ export const INITIAL_POSTS = [
 
 export const GAMES_LIST = [
   {
-    id: 1,
-    name: "Gobang Master",
-    desc: "Classic 5-in-a-row strategy game.",
-    difficulty: 3,
-    icon: "⚫⚪"
-  },
-  {
-    id: 2,
-    name: "Chess Duel",
-    desc: "Intellectual battle for grandmasters.",
-    difficulty: 5,
-    icon: "♟️"
-  },
-  {
-    id: 3,
-    name: "Fox & Geese",
-    desc: "Asymmetric strategy hunt game.",
+    id: 'xo',
+    name: 'XO Blitz',
+    desc: 'Quick-fire tic tac toe battles for two players.',
     difficulty: 2,
-    icon: "🦊"
+    icon: '❌⭕'
+  },
+  {
+    id: 'chess',
+    name: 'Chess Duel',
+    desc: 'Traditional chess board for a thoughtful duel.',
+    difficulty: 5,
+    icon: '♟️'
+  }
+];
+
+export const GARDEN_THEMES = [
+  {
+    id: 'meadow',
+    name: 'Sunny Meadow',
+    climate: 'Mild Breeze',
+    perks: 'Boosts seed growth by 5%',
+    image: '/gardens/sunny-meadow.png'
+  },
+  {
+    id: 'sunset',
+    name: 'Sunset Grove',
+    climate: 'Tropical Warmth',
+    perks: 'Doubles evening harvest points',
+    image: '/gardens/sunset-grove.png'
+  },
+  {
+    id: 'castle',
+    name: 'Castle Atrium',
+    climate: 'Cool Shade',
+    perks: 'Unlocks rare herbs in quests',
+    image: '/gardens/castle-atrium.png'
+  },
+  {
+    id: 'shore',
+    name: 'Shoreline Oasis',
+    climate: 'Sea Breeze',
+    perks: 'Watering cooldown reduced by 50%',
+    image: '/gardens/shoreline-oasis.png'
+  }
+];
+
+export const DAILY_GARDEN_TASKS = [
+  'Harvest any flower together',
+  'Send 5 drops of water to your partner',
+  'Visit the seed shop and buy a new seed',
+  'Take a photo of today\'s blooms and share it',
+  'Write an entry in the growth log'
+];
+
+export const REDEEM_REQUIREMENTS = [
+  {
+    tier: 'Free',
+    points: 1000,
+    unique: 10,
+    relationship: 8
+  },
+  {
+    tier: 'Premium',
+    points: 800,
+    unique: 8,
+    relationship: 6
+  },
+  {
+    tier: 'Infinity',
+    points: 500,
+    unique: 5,
+    relationship: 5
   }
 ];
 
@@ -427,6 +480,18 @@ const buildUser = (overrides) => ({
   bio: 'Tell me about your favorite travel story.',
   signupMethod: 'phone',
   subscription: 'Free',
+  subscriptionIndex: 0,
+  points: 800,
+  coupons: [],
+  profile: {
+    displayName: 'Echo Friend',
+    age: '24',
+    gender: 'Not shared',
+    education: '—',
+    hobbies: ['Travel'],
+    agePreference: 'Any',
+    location: 'Bangkok, Thailand'
+  },
   ...overrides
 });
 
@@ -440,7 +505,16 @@ export const FREE_USERS_NO_MBTI = [
     preference: 'Male',
     interests: ['Photography', 'Urban walks'],
     location: 'Taipei',
-    bio: 'Street photographer chasing neon lights.'
+    bio: 'Street photographer chasing neon lights.',
+    profile: {
+      displayName: 'Mika Chen',
+      age: '23',
+      gender: 'Female',
+      education: "Bachelor's in Media Arts",
+      hobbies: ['Street photography', 'Analog cameras', 'Night runs'],
+      agePreference: '24-30',
+      location: 'Taipei, Taiwan'
+    }
   }),
   buildUser({
     avatar: '🐧',
@@ -451,7 +525,16 @@ export const FREE_USERS_NO_MBTI = [
     preference: 'Female',
     location: 'Melbourne',
     interests: ['Foodie Tours', 'Yoga'],
-    bio: 'Plant mom + brunch addict.'
+    bio: 'Plant mom + brunch addict.',
+    profile: {
+      displayName: 'Rhea Patel',
+      age: '26',
+      gender: 'Female',
+      education: "Master's in Nutrition",
+      hobbies: ['Yoga', 'Plant-based cooking', 'Cafe hopping'],
+      agePreference: '25-33',
+      location: 'Melbourne, Australia'
+    }
   })
 ];
 
@@ -467,7 +550,16 @@ export const FREE_USERS_WITH_MBTI = [
     constellation: 'Leo',
     interests: ['Hiking', 'Tech', 'Board Games'],
     location: 'Singapore',
-    bio: 'Weekend hikes and spicy food challenges.'
+    bio: 'Weekend hikes and spicy food challenges.',
+    profile: {
+      displayName: 'Kai Lim',
+      age: '28',
+      gender: 'Male',
+      education: "Bachelor's in Engineering",
+      hobbies: ['Mountain hiking', 'Matcha brewing', 'Retro games'],
+      agePreference: '25-32',
+      location: 'Singapore'
+    }
   }),
   buildUser({
     avatar: '🐼',
@@ -480,7 +572,16 @@ export const FREE_USERS_WITH_MBTI = [
     constellation: 'Libra',
     interests: ['Meditation', 'Poetry', 'Indie films'],
     location: 'Seattle',
-    bio: 'Quiet energy, loud playlists.'
+    bio: 'Quiet energy, loud playlists.',
+    profile: {
+      displayName: 'Ava Shores',
+      age: '25',
+      gender: 'Female',
+      education: "Bachelor's in Literature",
+      hobbies: ['Meditation', 'Poetry slams', 'Vinyl collecting'],
+      agePreference: '24-34',
+      location: 'Seattle, USA'
+    }
   })
 ];
 
@@ -496,7 +597,16 @@ export const PREMIUM_USERS = [
     subscription: 'Premium',
     location: 'Toronto',
     interests: ['Cycling', 'Coffee roasting'],
-    bio: 'Engineer by day, latte artist by night.'
+    bio: 'Engineer by day, latte artist by night.',
+    profile: {
+      displayName: 'Noah Reeves',
+      age: '29',
+      gender: 'Male',
+      education: "Master's in Mechanical Engineering",
+      hobbies: ['Cycling', 'Coffee roasting', 'DIY gadgets'],
+      agePreference: '26-34',
+      location: 'Toronto, Canada'
+    }
   })
 ];
 
@@ -512,7 +622,16 @@ export const INFINITY_USERS = [
     subscription: 'Infinity',
     location: 'Los Angeles',
     interests: ['Festivals', 'Startups', 'Art installations'],
-    bio: 'Building a kinder internet, one DM at a time.'
+    bio: 'Building a kinder internet, one DM at a time.',
+    profile: {
+      displayName: 'Selene Park',
+      age: '27',
+      gender: 'Female',
+      education: "Bachelor's in International Business",
+      hobbies: ['Music festivals', 'Startup meetups', 'Art fairs'],
+      agePreference: '27-37',
+      location: 'Los Angeles, USA'
+    }
   })
 ];
 
@@ -593,30 +712,91 @@ export const MORE_BRANDS_LIST = [
 export const MALL_ITEMS = [
   {
     id: 1,
-    name: "Starbucks Coffee Trio",
-    price: "14.99$",
+    brand: 'Starbucks',
+    name: 'Starbucks Coffee Trio',
+    shortDescription: 'Redeem two grande handcrafted drinks.',
+    description:
+      'Enjoy any two grande-sized handcrafted beverages at participating Starbucks Thailand stores. Perfect for an afternoon coffee date.',
+    tierAccess: ['Free', 'Premium', 'Infinity'],
+    points: {
+      Free: 450,
+      Premium: 360,
+      Infinity: 300
+    },
+    validUntil: 'Available through 30 Jun 2025',
+    location: 'All Starbucks Thailand locations',
     image:
-      "https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80"
+      'https://images.unsplash.com/photo-1509042239860-f550ce710b93?auto=format&fit=crop&w=400&q=80',
+    terms: [
+      'Coupon must be redeemed in person with linked Echo ID.',
+      'Not valid with other promotions or double-discount campaigns.',
+      'Maximum of 1 redemption per partner pair per week.'
+    ]
   },
   {
     id: 2,
-    name: "Amazon Tea Selection",
-    price: "3.99$",
+    brand: 'Cafe Amazon',
+    name: 'Amazon Tea Selection',
+    shortDescription: 'Iced tea flight for adventurous duos.',
+    description:
+      'Mix and match two Cafe Amazon signature iced teas or coffees. Premium foam toppings included at no extra poin cost.',
+    tierAccess: ['Premium', 'Infinity'],
+    points: {
+      Premium: 280,
+      Infinity: 220
+    },
+    validUntil: 'Valid until 31 Aug 2025',
+    location: 'All Cafe Amazon Thailand cafés',
     image:
-      "https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=400&q=80"
+      'https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=400&q=80',
+    terms: [
+      'Premium or Infinity membership is required.',
+      'Redeemable Monday–Friday only.',
+      'Exchange for two drinks valued at ≤ THB 150 each.'
+    ]
   },
   {
     id: 3,
-    name: "7-Select Snacks Pack",
-    price: "2.99$",
+    brand: '7-Eleven',
+    name: '7-Select Snacks Pack',
+    shortDescription: 'Choose any 4 snack favourites in store.',
+    description:
+      'Grab four 7-Select snacks (chips, dried fruits, cookies, or nuts) from any 7-Eleven nationwide. Great for road trips or midnight cravings.',
+    tierAccess: ['Free', 'Premium', 'Infinity'],
+    points: {
+      Free: 260,
+      Premium: 210,
+      Infinity: 180
+    },
+    validUntil: 'Redeem by 15 Jul 2025',
+    location: '7-Eleven Thailand – all branches',
     image:
-      "https://images.unsplash.com/photo-1599490659213-e2b9527bd087?auto=format&fit=crop&w=400&q=80"
+      'https://images.unsplash.com/photo-1599490659213-e2b9527bd087?auto=format&fit=crop&w=400&q=80',
+    terms: [
+      'Limited to snack SKUs priced ≤ THB 40 each.',
+      'Non-refundable once redeemed.',
+      'Barcode provided inside Echo must be shown at cashier.'
+    ]
   },
   {
     id: 4,
-    name: "Shaved Ice Dessert",
-    price: "10$",
+    brand: 'After You',
+    name: 'Shibuya Dessert Date',
+    shortDescription: 'Share a signature Shibuya honey toast.',
+    description:
+      'Treat yourselves to a full-size Shibuya honey toast with selected toppings plus two drinks at After You Dessert Café.',
+    tierAccess: ['Infinity'],
+    points: {
+      Infinity: 180
+    },
+    validUntil: 'Weekends only · 1 Sep – 31 Dec 2025',
+    location: 'Participating After You Dessert Café branches',
     image:
-      "https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=400&q=80"
+      'https://images.unsplash.com/photo-1563805042-7684c019e1cb?auto=format&fit=crop&w=400&q=80',
+    terms: [
+      'Infinity tier exclusive reward.',
+      'Limited to first 300 redemptions per month.',
+      'Dine-in only.'
+    ]
   }
 ];
