@@ -774,16 +774,11 @@ const GardenPlayView = ({
 );
 
 const GamesHub = ({ stats, onEnterGarden, onPlay, onRedeem }) => (
-  <div className="px-4 pb-32 space-y-6">
+  <div className="px-4 pb-28 space-y-5">
     <div className="px-2 text-center">
-      <h2 className="text-2xl font-bold text-[#151921] mb-2">
+      <h2 className="text-2xl font-bold text-[#151921]">
         Games Paradise
       </h2>
-      <div className="flex justify-center gap-4 opacity-60">
-        <Gamepad2 className="w-6 h-6 text-[#5F48E6]" />
-        <Zap className="w-6 h-6 text-[#0BAB7C]" />
-        <Activity className="w-6 h-6 text-[#5F48E6]" />
-      </div>
     </div>
 
     <GardenEntryCard stats={stats} onEnter={onEnterGarden} />
@@ -997,10 +992,29 @@ const GamesTab = () => {
     }
   };
 
+  // All views share same shell: top app bar + scrollable content
   return (
-    <div className="pb-24 min-h-full bg-gradient-to-b from-[#D7D0FF]/30 to-[#F3F0FF]">
-      {renderView()}
-      <DailyTasksModal isOpen={showTasks} onClose={() => setShowTasks(false)} />
+    <div className="min-h-full flex flex-col pb-24 bg-white">
+      {/* Top App Bar */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-100">
+        <div className="h-12 flex items-center justify-between px-4">
+          <span className="w-6" />
+          <h1 className="text-lg font-semibold text-[#151921]">
+            Games Paradise
+          </h1>
+          <Gamepad2 className="w-5 h-5 text-[#5F48E6]" />
+        </div>
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 overflow-y-auto bg-white">
+        {renderView()}
+      </div>
+
+      <DailyTasksModal
+        isOpen={showTasks}
+        onClose={() => setShowTasks(false)}
+      />
     </div>
   );
 };

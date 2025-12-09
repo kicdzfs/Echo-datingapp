@@ -186,19 +186,22 @@ const ChatTab = ({ blockedUsers = [], onBlockUser, onOverlayChange }) => {
   const currentRec = RECS_LIST[activeRecIndex];
 
   return (
-    <div className="pb-20 px-4 pt-2 flex flex-col h-full bg-[#F3F0FF]">
-      <div className="relative mb-6 flex-shrink-0">
-        <Search className="absolute left-3 top-3 text-gray-400 w-4 h-4" />
-        <input
-          type="text"
-          placeholder="Search Message"
-          className="w-full bg-white py-2.5 pl-10 pr-4 rounded-full text-sm shadow-sm outline-none"
-        />
+    <div className="flex flex-col h-full bg-white pb-20">
+      {/* Top App Bar with search */}
+      <div className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4">
+        <div className="relative flex-shrink-0 py-2">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search Message"
+            className="w-full bg-[#F3F0FF] py-2.5 pl-10 pr-4 rounded-full text-sm shadow-sm outline-none"
+          />
+        </div>
       </div>
 
       <div
         onClick={() => setView('ai_chat')}
-        className="mb-4 flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
+        className="mb-4 mt-4 mx-4 flex-shrink-0 cursor-pointer active:scale-95 transition-transform"
       >
         <div className="flex items-center gap-4 bg-white p-4 rounded-2xl shadow-sm border border-blue-50">
           <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center text-2xl relative">
@@ -206,7 +209,7 @@ const ChatTab = ({ blockedUsers = [], onBlockUser, onOverlayChange }) => {
             <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
           </div>
           <div className="flex-1">
-            <h4 className="font-bold text-[#151921]">Echo AI</h4>
+            <h4 className="font-bold text-[#151921]">Clicksol AI</h4>
             <p className="text-xs text-gray-400">
               Always here to chat
             </p>
@@ -215,8 +218,8 @@ const ChatTab = ({ blockedUsers = [], onBlockUser, onOverlayChange }) => {
         </div>
       </div>
 
-  {matchedChat && (
-        <div className="mb-6 flex-shrink-0">
+      {matchedChat && (
+        <div className="mb-6 mx-4 flex-shrink-0">
           <div
             className="flex items-center gap-4 p-4 rounded-2xl shadow-md bg-gradient-to-r from-[#4ADE80] to-[#22C55E] cursor-pointer"
             onClick={() => handleOpenChat(matchedChat.id)}
@@ -239,7 +242,7 @@ const ChatTab = ({ blockedUsers = [], onBlockUser, onOverlayChange }) => {
         </div>
       )}
 
-      <div className="mb-6 flex-shrink-0">
+      <div className="mb-6 mx-4 flex-shrink-0">
         <div
           className="bg-white rounded-3xl shadow-md border border-white/70 p-4"
           onTouchStart={handleTouchStart}
@@ -319,7 +322,7 @@ const ChatTab = ({ blockedUsers = [], onBlockUser, onOverlayChange }) => {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 mb-6">
+      <div className="flex-1 flex flex-col min-h-0 mb-6 mx-4">
         <h3 className="font-bold text-[#151921] mb-3 flex-shrink-0">
           Messages
         </h3>

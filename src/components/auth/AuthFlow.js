@@ -160,52 +160,94 @@ const MONTH_NAMES = [
 
 const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
+const SocialIcon = ({ provider }) => {
+  const baseClass = "w-4 h-4 object-contain";
+  if (provider === "Google") {
+    return (
+      <img
+        src="/google-icon.svg"
+        alt="Google"
+        className={baseClass}
+        loading="lazy"
+      />
+    );
+  }
+  if (provider === "Facebook") {
+    return (
+      <img
+        src="/facebook-icon.svg"
+        alt="Facebook"
+        className={baseClass}
+        loading="lazy"
+      />
+    );
+  }
+  if (provider === "Apple") {
+    return (
+      <img
+        src="/apple-icon.svg"
+        alt="Apple"
+        className={baseClass}
+        loading="lazy"
+      />
+    );
+  }
+  return null;
+};
+
 export const AuthLanding = ({
   onSignupPhone,
   onSocialLogin,
   onLoginExisting
 }) => (
-  <div className="flex flex-col flex-1 bg-gradient-to-b from-[#E0D9FF] to-[#F3F0FF] px-6 py-8 text-center overflow-y-auto">
-    <div className="flex flex-col items-center justify-center gap-5">
-      <img
-        src="/logos/echoapp-logo.png"
-        alt="Echo"
-        className="w-28 sm:w-32 h-auto object-contain mx-auto drop-shadow-lg"
-      />
-      <p className="text-lg text-[#5F48E6] font-semibold leading-tight max-w-sm">
-        Where kindred souls find their echo beyond appearances
-      </p>
-      <button
-        onClick={onSignupPhone}
-        className="w-full rounded-full bg-[#151921] text-white py-3 font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
-      >
-        <Phone className="w-4 h-4" /> Sign up with phone number
-      </button>
-      <div className="text-[11px] uppercase tracking-widest text-gray-500">
-        or use social sign up
-      </div>
-      <div className="flex flex-col gap-3 w-full">
-        {['Google', 'Facebook', 'Apple'].map((provider) => (
+  <main className="min-h-screen w-full bg-gradient-to-b from-[#E0D9FF] via-[#E8E2FF] to-[#F3F0FF] overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center px-4">
+      <section className="w-full max-w-md bg-transparent text-center">
+        <div className="flex flex-col items-center justify-center gap-5">
+          <img
+            src="/logos/clicksol_icon.png"
+            alt="Clicksol"
+            className="w-28 sm:w-32 h-auto object-contain mx-auto drop-shadow-lg"
+          />
+          <p className="text-lg text-[#5F48E6] font-semibold leading-tight max-w-sm">
+            Where kindred souls find their echo beyond appearances
+          </p>
           <button
-            key={provider}
-            onClick={() => onSocialLogin(provider)}
-            className="bg-white rounded-full py-3 shadow flex items-center justify-center text-sm font-semibold text-[#151921] active:scale-95 transition-transform"
+            onClick={onSignupPhone}
+            className="w-full rounded-full bg-[#151921] text-white py-3 font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
           >
-            Continue with {provider}
+            <Phone className="w-4 h-4" /> Sign up with phone number
           </button>
-        ))}
-      </div>
+          <div className="text-[11px] uppercase tracking-widest text-gray-500">
+            or use social sign up
+          </div>
+          <div className="flex flex-col gap-3 w-full">
+            {['Google', 'Facebook', 'Apple'].map((provider) => (
+              <button
+                key={provider}
+                onClick={() => onSocialLogin(provider)}
+                className="bg-white rounded-full py-3 shadow flex items-center justify-center text-sm font-semibold text-[#151921] active:scale-95 transition-transform"
+              >
+                <span className="flex items-center gap-2">
+                  <SocialIcon provider={provider} />
+                  <span>Continue with {provider}</span>
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="text-sm text-gray-600 mt-4 font-medium">
+          Already have account?{' '}
+          <button
+            onClick={onLoginExisting}
+            className="underline underline-offset-2 text-[#5F48E6]"
+          >
+            Log In
+          </button>
+        </div>
+      </section>
     </div>
-    <div className="text-sm text-gray-600 mt-4 font-medium">
-      Already have account?{' '}
-      <button
-        onClick={onLoginExisting}
-        className="underline underline-offset-2 text-[#5F48E6]"
-      >
-        Log In
-      </button>
-    </div>
-  </div>
+  </main>
 );
 
 const UserCard = ({ user, onSelect }) => (
@@ -258,8 +300,9 @@ export const LoginScreen = ({ onBack, onSelectUser }) => {
   ];
 
   return (
-    <div className="h-full bg-[#F3F0FF] flex flex-col">
-      <div className="flex items-center gap-3 px-4 py-4">
+    <main className="min-h-screen w-full bg-gradient-to-b from-[#E0D9FF] via-[#E8E2FF] to-[#F3F0FF] overflow-hidden">
+      <div className="max-w-md mx-auto px-4 pt-8 pb-10 h-full">
+      <div className="flex items-center gap-3 mb-4">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
         </button>
@@ -267,7 +310,7 @@ export const LoginScreen = ({ onBack, onSelectUser }) => {
           Log in to Echo
         </h2>
       </div>
-      <div className="flex-1 overflow-y-auto px-4 pb-6 space-y-6">
+      <div className="space-y-6">
         {sections.map((section) => (
           <div key={section.title} className="space-y-3">
             <div>
@@ -288,7 +331,8 @@ export const LoginScreen = ({ onBack, onSelectUser }) => {
           </div>
         ))}
       </div>
-    </div>
+      </div>
+    </main>
   );
 };
 
@@ -351,8 +395,9 @@ export const PhoneEntryScreen = ({
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
+    <main className="min-h-screen w-full bg-gradient-to-b from-[#E0D9FF] via-[#E8E2FF] to-[#F3F0FF]">
+      <div className="max-w-md mx-auto px-4 pt-8 pb-10 h-full flex flex-col">
+      <div className="flex items-center gap-3 mb-4">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
         </button>
@@ -367,7 +412,7 @@ export const PhoneEntryScreen = ({
             onSubmit();
           }
         }}
-        className="flex-1 p-4 flex flex-col gap-4"
+        className="flex-1 flex flex-col gap-4"
       >
         <label className="text-sm font-semibold text-gray-500">
           Your number
@@ -467,7 +512,8 @@ export const PhoneEntryScreen = ({
           Send code
         </button>
       </form>
-    </div>
+      </div>
+    </main>
   );
 };
 
@@ -479,47 +525,49 @@ export const PhoneVerificationScreen = ({
   onBack,
   error
 }) => (
-  <div className="h-full flex flex-col bg-white">
-    <div className="flex items-center gap-3 px-4 py-4 border-b border-gray-100">
-      <button onClick={onBack}>
-        <ArrowLeft className="w-6 h-6 text-[#151921]" />
-      </button>
-      <h2 className="font-bold text-lg text-[#151921]">
-        Enter verification code
-      </h2>
-    </div>
-    <form
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit();
-      }}
-      className="flex-1 p-4 flex flex-col gap-4"
-    >
-      <p className="text-sm text-gray-500">
-        We sent a 6-digit code to <strong>{phone}</strong>
-      </p>
-      <input
-        type="text"
-        inputMode="numeric"
-        maxLength={6}
-        value={code}
-        onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
-        className="border border-gray-200 rounded-2xl p-3 text-center tracking-[0.5rem] text-xl outline-none focus:ring-2 focus:ring-[#5F48E6]"
-      />
-      {error && (
-        <div className="text-xs text-red-500 font-semibold">
-          {error}
-        </div>
-      )}
-      <button
-        type="submit"
-        className="mt-auto bg-[#5F48E6] text-white py-3 rounded-2xl font-bold active:scale-95 transition-transform disabled:opacity-40"
-        disabled={code.length !== 6}
+  <main className="min-h-screen w-full bg-[#F3F0FF]">
+    <div className="max-w-md mx-auto px-4 pt-8 pb-10 h-full flex flex-col">
+      <div className="flex items-center gap-3 mb-4">
+        <button onClick={onBack}>
+          <ArrowLeft className="w-6 h-6 text-[#151921]" />
+        </button>
+        <h2 className="font-bold text-lg text-[#151921]">
+          Enter verification code
+        </h2>
+      </div>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          onSubmit();
+        }}
+        className="flex-1 flex flex-col gap-4"
       >
-        Verify
-      </button>
-    </form>
-  </div>
+        <p className="text-sm text-gray-500">
+          We sent a 6-digit code to <strong>{phone}</strong>
+        </p>
+        <input
+          type="text"
+          inputMode="numeric"
+          maxLength={6}
+          value={code}
+          onChange={(e) => onChange(e.target.value.replace(/\D/g, ''))}
+          className="border border-gray-200 rounded-2xl p-3 text-center tracking-[0.5rem] text-xl outline-none focus:ring-2 focus:ring-[#5F48E6]"
+        />
+        {error && (
+          <div className="text-xs text-red-500 font-semibold">
+            {error}
+          </div>
+        )}
+        <button
+          type="submit"
+          className="mt-auto bg-[#5F48E6] text-white py-3 rounded-2xl font-bold active:scale-95 transition-transform disabled:opacity-40"
+          disabled={code.length !== 6}
+        >
+          Verify
+        </button>
+      </form>
+    </div>
+  </main>
 );
 
 const stepOrder = [
@@ -1269,34 +1317,36 @@ export const ProfileWizard = ({
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#F3F0FF]">
-      <StepHeader
-        title={titles[currentStep]}
-        description={descriptions[currentStep]}
-        onBack={goBack}
-        showBack
-        rightContent={
-          allowSkip ? (
-            <button
-              type="button"
-              onClick={handleSkip}
-              className="text-xs font-bold text-[#5F48E6]"
-            >
-              Skip
-            </button>
-          ) : null
-        }
-      />
-      <div className="flex-1 overflow-y-auto">{renderStep()}</div>
-      <div className="p-4">
-        <button
-          disabled={!stepValid()}
-          onClick={goNext}
-          className="w-full bg-[#151921] text-white py-3 rounded-2xl font-bold active:scale-95 transition-transform disabled:bg-gray-300"
-        >
-          {step === stepOrder.length - 1 ? 'Finish' : 'Next'}
-        </button>
+    <main className="min-h-screen w-full bg-[#F3F0FF]">
+      <div className="max-w-md mx-auto px-4 pt-8 pb-10 h-full flex flex-col">
+        <StepHeader
+          title={titles[currentStep]}
+          description={descriptions[currentStep]}
+          onBack={goBack}
+          showBack
+          rightContent={
+            allowSkip ? (
+              <button
+                type="button"
+                onClick={handleSkip}
+                className="text-xs font-bold text-[#5F48E6]"
+              >
+                Skip
+              </button>
+            ) : null
+          }
+        />
+        <div className="flex-1 overflow-y-auto">{renderStep()}</div>
+        <div className="pt-4">
+          <button
+            disabled={!stepValid()}
+            onClick={goNext}
+            className="w-full bg-[#151921] text-white py-3 rounded-2xl font-bold active:scale-95 transition-transform disabled:bg-gray-300"
+          >
+            {step === stepOrder.length - 1 ? 'Finish' : 'Next'}
+          </button>
+        </div>
       </div>
-    </div>
+    </main>
   );
 };

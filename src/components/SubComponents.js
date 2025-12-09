@@ -41,6 +41,7 @@ import {
   MORE_BRANDS_LIST,
   MALL_ITEMS
 } from '../data/mockData';
+import { Image as ImageIcon, Hash, Smile } from 'lucide-react';
 
 // --- Helper functions & hooks ---
 
@@ -270,12 +271,11 @@ export const PostItem = ({
   const [isCommentOpen, setCommentOpen] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const MAX_LENGTH = 100;
-  const isLong = !isDetailView && post.content.length > MAX_LENGTH;
-  const displayContent = isDetailView
-    ? post.content
-    : isLong
-    ? `${post.content.substring(0, MAX_LENGTH)}...`
-    : post.content;
+  const plainContent = (post.content || '').replace(/<[^>]+>/g, '');
+  const isLong = !isDetailView && plainContent.length > MAX_LENGTH;
+  const displaySnippet = isLong
+    ? `${plainContent.substring(0, MAX_LENGTH)}...`
+    : plainContent;
 
   const toggleComment = () => {
     setCommentOpen(!isCommentOpen);
@@ -293,8 +293,8 @@ export const PostItem = ({
 
   return (
     <div
-      className={`bg-white p-4 rounded-2xl shadow-sm relative ${
-        isDetailView ? 'shadow-none' : ''
+      className={`w-full bg-white px-4 py-3 relative border-b border-black/5 ${
+        isDetailView ? '' : ''
       }`}
     >
       <div className="flex justify-between items-start mb-3">
@@ -343,14 +343,21 @@ export const PostItem = ({
         className="mb-3"
         onClick={!isDetailView ? onOpenDetail : undefined}
       >
-        <p className="text-sm text-gray-700 leading-relaxed">
-          {displayContent}
-          {isLong && (
-            <span className="text-[#5F48E6] font-bold ml-1 cursor-pointer">
-              See more
-            </span>
-          )}
-        </p>
+        {isDetailView ? (
+          <div
+            className="text-sm text-gray-700 leading-relaxed break-words"
+            dangerouslySetInnerHTML={{ __html: post.content }}
+          />
+        ) : (
+          <p className="text-sm text-gray-700 leading-relaxed">
+            {displaySnippet}
+            {isLong && (
+              <span className="text-[#5F48E6] font-bold ml-1 cursor-pointer">
+                See more
+              </span>
+            )}
+          </p>
+        )}
       </div>
       {post.image && (
         <img
@@ -360,7 +367,7 @@ export const PostItem = ({
           onClick={!isDetailView ? onOpenDetail : undefined}
         />
       )}
-      <div className="flex justify-between items-center pt-2 border-t border-gray-50 relative">
+      <div className="flex justify-between items-center pt-2 border-t border-gray-100 relative">
         <div className="flex gap-6">
           <button
             onClick={(e) => {
@@ -467,14 +474,31 @@ export const PostItem = ({
 
 // --- Overlays & modals ---
 
-export const NewPostOverlay = ({ onClose, onPost }) => {
-  const [content, setContent] = useState('');
+export const NewPostOverlay = ({
+  onClose,
+  onPost,
+  onSaveDraft,
+  onDiscardDraft,
+  draftId = null,
+  initialContent = ''
+}) => {
+  const [content, setContent] = useState(initialContent || '');
   const [showConfirm, setShowConfirm] = useState(false);
-  const textareaRef = useRef(null);
+  const editorRef = useRef(null);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [showTagList, setShowTagList] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
-    textareaRef.current?.focus();
-  }, []);
+    setContent(initialContent || '');
+    if (editorRef.current) {
+      editorRef.current.innerHTML = initialContent || '';
+    }
+  }, [initialContent]);
+
+  useEffect(() => {
+    editorRef.current?.focus();
+  }, [initialContent]);
 
   const handleBack = () => {
     if (content.trim()) setShowConfirm(true);
@@ -482,15 +506,159 @@ export const NewPostOverlay = ({ onClose, onPost }) => {
   };
 
   const handlePost = () => {
-    if (content.trim()) {
+    const plain = content.replace(/<[^>]+>/g, '').trim();
+    if (plain) {
       onPost(content);
+      if (draftId && onDiscardDraft) {
+        onDiscardDraft(draftId);
+      }
       onClose();
     }
   };
 
+  const charCount = content.replace(/<[^>]+>/g, '').length;
+
+  const handleDone = () => {
+    editorRef.current?.blur();
+  };
+
+  const insertAtCursor = (text) => {
+    const el = editorRef.current;
+    if (!el) {
+      setContent((prev) => prev + text);
+      return;
+    }
+    el.focus();
+    const selection = window.getSelection();
+    if (!selection) return;
+    let range =
+      selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    if (!range) {
+      range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      selection.addRange(range);
+    }
+    const textNode = document.createTextNode(text);
+    range.insertNode(textNode);
+    range.setStartAfter(textNode);
+    range.setEndAfter(textNode);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    setContent(el.innerHTML);
+  };
+
+  const insertEmojiImage = (name) => {
+    const el = editorRef.current;
+    if (!el) return;
+    el.focus();
+    const selection = window.getSelection();
+    if (!selection) return;
+    let range =
+      selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    if (!range) {
+      range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      selection.addRange(range);
+    }
+    const img = document.createElement('img');
+    img.src = `/emojis/${name}.png`;
+    img.alt = name;
+    img.className = 'inline-block w-5 h-5 align-text-bottom';
+    range.insertNode(img);
+    range.setStartAfter(img);
+    range.setEndAfter(img);
+    selection.removeAllRanges();
+    selection.addRange(range);
+    setContent(el.innerHTML);
+  };
+
+  const handleSelectEmoji = (name) => {
+    insertEmojiImage(name);
+  };
+
+  const handlePickImage = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    alert('Image selected. In a real app this would attach to the post.');
+    e.target.value = '';
+  };
+
+  const emojiMap = [
+    { name: 'smile', char: '😀' },
+    { name: 'happy', char: '😊' },
+    { name: 'angry', char: '😡' },
+    { name: 'cry', char: '😢' },
+    { name: 'embarrassed', char: '😳' },
+    { name: 'surprised', char: '😮' },
+    { name: 'wronged', char: '😣' },
+
+    { name: 'shout', char: '😫' },
+    { name: 'flushed', char: '😳' },
+    { name: 'yummy', char: '😋' },
+    { name: 'complacent', char: '😏' },
+    { name: 'drool', char: '🤤' },
+    { name: 'scream', char: '😱' },
+    { name: 'weep', char: '😭' },
+
+    { name: 'speechless', char: '😶' },
+    { name: 'funnyface', char: '😜' },
+    { name: 'laughwithtears', char: '😂' },
+    { name: 'wicked', char: '😈' },
+    { name: 'facewithrollingeyes', char: '🙄' },
+    { name: 'sulk', char: '😒' },
+    { name: 'thinking', char: '🤔' },
+
+    { name: 'lovely', char: '🥰' },
+    { name: 'greedy', char: '🤑' },
+    { name: 'smileface', char: '🙂' },
+    { name: 'wow', char: '🤯' },
+    { name: 'joyful', char: '😁' },
+    { name: 'hehe', char: '😆' },
+    { name: 'slap', char: '🤕' },
+
+    { name: 'tears', char: '😭' },
+    { name: 'stun', char: '😵' },
+    { name: 'cute', char: '🥺' },
+    { name: 'blink', char: '😉' },
+    { name: 'disdain', char: '😤' },
+    { name: 'astonish', char: '😲' },
+    { name: 'rage', char: '🤬' },
+
+    { name: 'cool', char: '😎' },
+    { name: 'excited', char: '🤩' },
+    { name: 'proud', char: '😌' },
+    { name: 'shock', char: '😧' },
+    { name: 'evil', char: '👿' },
+    { name: 'angel', char: '😇' },
+    { name: 'awkward', char: '😬' },
+
+    { name: 'laugh', char: '😄' },
+    { name: 'pride', char: '😺' },
+    { name: 'nap', char: '😴' },
+    { name: 'loveface', char: '😍' }
+  ];
+
+  const popularTags = [
+    'WeekendVibes',
+    'TravelStory',
+    'CoffeeTime',
+    'BookRecommendations',
+    'MBTITalk',
+    'DatingQuestions',
+    'MovieNight',
+    'MusicShare'
+  ];
+
   return (
-    <div className="fixed inset-0 z-50 bg-[#F3F0FF] flex flex-col max-w-md mx-auto sm:rounded-[3rem] h-[95vh] top-auto bottom-auto border-4 border-white">
-      <div className="bg-white px-4 py-3 flex justify-between items-center shadow-sm rounded-t-[2.5rem]">
+    <div className="min-h-[100dvh] flex flex-col bg-white">
+      {/* Top bar */}
+      <div className="shrink-0 bg-white px-4 py-3 flex justify-between items-center shadow-sm">
         <button
           onClick={handleBack}
           className="p-1"
@@ -512,38 +680,133 @@ export const NewPostOverlay = ({ onClose, onPost }) => {
           Post
         </button>
       </div>
-      <div className="flex-1 p-4">
-        <textarea
-          ref={textareaRef}
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder="What's on your mind?"
-          className="w-full h-64 p-4 bg-white rounded-2xl resize-none outline-none text-[#151921] placeholder-gray-400"
-        />
+      {/* Main content */}
+      <div className="flex-1 overflow-y-auto p-4 pb-32 flex flex-col gap-4">
+        <div className="relative">
+          <div
+            ref={editorRef}
+            contentEditable
+            suppressContentEditableWarning
+            onInput={(e) => setContent(e.currentTarget.innerHTML)}
+            className="w-full h-[30vh] min-h-[140px] p-4 bg-white outline-none text-[#151921] placeholder-gray-400 border border-gray-200 rounded-2xl text-base whitespace-pre-wrap overflow-y-auto"
+          />
+          {!content && (
+            <span className="pointer-events-none absolute left-4 top-3 text-[#A9A3D4] text-sm select-none">
+              What&apos;s on your mind?
+            </span>
+          )}
+        </div>
       </div>
+      {/* bottom toolbar fixed near keyboard / safe-area aware */}
+      <div className="fixed left-0 right-0 bottom-[env(safe-area-inset-bottom,0px)] z-30 bg-white/95 backdrop-blur border-t border-gray-100 px-4 py-2 flex items-center justify-between text-sm text-gray-500">
+        <div className="flex items-center gap-4">
+          <button
+            type="button"
+            className="text-gray-500 hover:text-[#5F48E6]"
+            onClick={() => {
+              setShowEmojiPicker((v) => !v);
+              setShowTagList(false);
+            }}
+          >
+            <Smile className="w-6 h-6" />
+          </button>
+          <button
+            type="button"
+            className="text-gray-500 hover:text-[#5F48E6]"
+            onClick={handlePickImage}
+          >
+            <ImageIcon className="w-6 h-6" />
+          </button>
+          <button
+            type="button"
+            className="text-gray-500 hover:text-[#5F48E6]"
+            onClick={() => {
+              setShowTagList((v) => !v);
+              setShowEmojiPicker(false);
+            }}
+          >
+            <Hash className="w-6 h-6" />
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageChange}
+          />
+        </div>
+        <div className="flex items-center gap-4">
+          <span className="text-xs text-gray-400">{charCount}</span>
+          <button
+            type="button"
+            onClick={handleDone}
+            className="text-sm font-semibold text-[#5F48E6]"
+          >
+            Done
+          </button>
+        </div>
+      </div>
+      {showEmojiPicker && (
+        <div className="fixed left-0 right-0 bottom-14 bg-[#F3F0FF] border-t border-gray-200 p-2 grid grid-cols-7 gap-2 max-h-40 overflow-y-auto">
+          {emojiMap.map(({ name }) => (
+            <button
+              key={name}
+              type="button"
+              className="w-8 h-8 rounded-full bg-white flex items-center justify-center overflow-hidden"
+              onClick={() => handleSelectEmoji(name)}
+            >
+              <img
+                src={`/emojis/${name}.png`}
+                alt={name}
+                className="w-8 h-8 object-contain"
+              />
+            </button>
+          ))}
+        </div>
+      )}
+      {showTagList && (
+        <div className="fixed left-0 right-0 bottom-14 bg-white border-t border-gray-200 p-2 max-h-40 overflow-y-auto">
+          {popularTags.map((tag) => (
+            <button
+              key={tag}
+              type="button"
+              onClick={() => insertAtCursor(`#${tag} `)}
+              className="w-full text-left px-3 py-2 text-xs text-[#151921] hover:bg-[#F3F0FF] rounded-lg"
+            >
+              #{tag}
+            </button>
+          ))}
+        </div>
+      )}
       {showConfirm && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 rounded-[3rem]">
-          <div className="bg-white w-4/5 max-w-sm rounded-2xl p-6">
-            <h3 className="font-bold text-lg text-[#151921] mb-2">
-              Discard post?
-            </h3>
-            <p className="text-sm text-gray-600 mb-6">
-              If you go back now, your post will be discarded.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConfirm(false)}
-                className="flex-1 py-2.5 rounded-full border border-gray-300 text-gray-600 font-bold"
-              >
-                Keep Editing
-              </button>
-              <button
-                onClick={onClose}
-                className="flex-1 py-2.5 rounded-full bg-[#FF4D4F] text-white font-bold"
-              >
-                Discard
-              </button>
-            </div>
+        <div className="fixed inset-0 bg-black/40 flex items-end z-50">
+          <div className="w-full bg-white rounded-t-3xl p-4 space-y-1 shadow-2xl">
+            <div className="w-10 h-1.5 rounded-full bg-gray-300 mx-auto mb-2" />
+            <button
+              onClick={() => {
+                onSaveDraft?.(content);
+                setShowConfirm(false);
+                onClose();
+              }}
+              className="w-full py-3 text-sm font-semibold text-[#151921]"
+            >
+              Save Draft
+            </button>
+            <button
+              onClick={() => {
+                setShowConfirm(false);
+                onClose();
+              }}
+              className="w-full py-3 text-sm font-semibold text-red-500"
+            >
+              Discard
+            </button>
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="w-full py-3 text-sm font-semibold text-[#151921] bg-gray-50 rounded-b-3xl"
+            >
+              Cancel
+            </button>
           </div>
         </div>
       )}
@@ -1183,17 +1446,25 @@ export const UserChatView = ({
 // --- Me tab sub-pages (used only inside MeTab, but exported for clarity) ---
 
 export const PersonalPlaza = ({
+  user,
   posts,
   onBack,
   onLikePost,
   onAddComment
 }) => {
-  const myPosts = posts
-    .filter((p) => p.user === 'Anni')
-    .sort((a, b) => b.timestamp - a.timestamp);
+  // Prefer profile displayName, then nickname, then name.
+  const displayName =
+    user?.profile?.displayName || user?.nickname || user?.name || '';
+
+  const baseList = displayName
+    ? posts.filter((p) => p.user === displayName)
+    : posts;
+
+  const myPosts = baseList.sort((a, b) => b.timestamp - a.timestamp);
+
 
   return (
-    <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -1241,7 +1512,11 @@ export const EMall = ({
     Infinity: 'bg-[#E5D1FF] text-[#5F2DB2]'
   };
 
-  const userTier = user?.subscription || 'Free';
+  // Derive current tier name from subscriptionIndex + VIP_PLANS,
+  // fall back to string subscription or "Free" for compatibility.
+  const subscriptionIndex = user?.subscriptionIndex ?? 0;
+  const userTier =
+    VIP_PLANS[subscriptionIndex]?.name || user?.subscription || 'Free';
   const userPoints = user?.points ?? 0;
   const ownedCoupons = Array.isArray(user?.coupons) ? user.coupons : [];
   const readyCoupons = ownedCoupons.filter((coupon) => coupon.status !== 'used');
@@ -1272,7 +1547,7 @@ export const EMall = ({
 
   if (showMore) {
     return (
-      <div className="absolute inset-0 bg-[#F3F0FF] z-40 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+      <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
         <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
           <button onClick={() => setShowMore(false)}>
             <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -1634,7 +1909,7 @@ export const EMall = ({
   }
 
   return (
-    <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -1643,25 +1918,7 @@ export const EMall = ({
           {section === 'mall' ? 'E Mall' : 'My Coupons'}
         </h2>
       </div>
-      <div className="w-full h-48 relative flex-shrink-0">
-        <img
-          src="https://images.unsplash.com/photo-1544787219-7f47ccb76574?auto=format&fit=crop&w=800&q=80"
-          className="w-full h-full object-cover opacity-90"
-          alt="Coffee Banner"
-        />
-        <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center text-white">
-          <h2 className="text-3xl font-bold drop-shadow-md">
-            Special Gifts !
-          </h2>
-          <p className="font-medium mt-1 text-lg drop-shadow-md">
-            Show you care...
-          </p>
-          <p className="text-[10px] mt-2 opacity-90">
-            Available until December 30th, 2024. Grab it fast!
-          </p>
-        </div>
-      </div>
-      <div className="flex-1 overflow-y-auto bg-[#FBFAF3] px-4 pt-6 pb-24 -mt-4 rounded-t-3xl relative z-10">
+      <div className="flex-1 overflow-y-auto bg-[#FBFAF3] px-4 pt-4 pb-24">
         {section === 'mall' ? renderMallGrid() : renderMyCoupons()}
       </div>
       <div className="bg-white border-t border-gray-100 flex">
@@ -1711,7 +1968,7 @@ export const VIPCenter = ({
   };
 
   return (
-    <div className="absolute inset-0 bg-white z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 bg-white z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="px-4 py-3 flex items-center gap-3 border-b border-gray-100 pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -1846,7 +2103,7 @@ export const SettingsPage = ({ onBack, onOpenBlockList }) => {
   ];
 
   return (
-    <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -1970,7 +2227,7 @@ export const BlockList = ({
   onBack,
   onUnblockUser
 }) => (
-  <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+  <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
     <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
       <button onClick={onBack}>
         <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -2151,7 +2408,7 @@ export const EditProfilePanel = ({ user, onUserChange, onBack }) => {
     profileDraft.displayName || user?.nickname || user?.name || 'New Echo';
 
   return (
-    <div className="absolute inset-0 bg-[#F3F0FF] z-30 flex flex-col rounded-[2.8rem] overflow-hidden animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -2245,6 +2502,89 @@ export const EditProfilePanel = ({ user, onUserChange, onBack }) => {
         >
           Preview
         </button>
+      </div>
+    </div>
+  );
+};
+
+export const CoinCenter = ({ user, onBack }) => {
+  const profile = user?.profile || {};
+  const displayName =
+    profile.displayName || user?.nickname || user?.name || 'New Echo';
+  const avatar = user?.avatar || '🙂';
+  const subscriptionIndex = user?.subscriptionIndex ?? 0;
+  const tierName = VIP_PLANS[subscriptionIndex]?.name || 'Free';
+  const isPremium = tierName !== 'Free';
+  const coins = typeof user?.points === 'number' ? user.points : 0;
+
+  const actions = [
+    { key: 'exchange', label: 'Exchange coupons' },
+    { key: 'transfer', label: 'Transfer coins' },
+    { key: 'history', label: 'History' },
+    { key: 'donation', label: 'Donation' }
+  ];
+
+  const handleAction = (label) => {
+    alert(`${label} coming soon`);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-[#FFFDF6] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+      <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+        <button onClick={onBack}>
+          <ArrowLeft className="w-6 h-6 text-[#151921]" />
+        </button>
+        <h2 className="font-bold text-lg text-[#151921]">Coins</h2>
+      </div>
+      <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-6">
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-white flex flex-col items-center text-center space-y-3">
+          <div className="w-16 h-16 rounded-full bg-[#F3F0FF] flex items-center justify-center text-3xl border border-white mb-1">
+            {avatar}
+          </div>
+          <div className="space-y-1">
+            <p className="text-sm font-semibold text-[#151921]">
+              {displayName}
+            </p>
+            <span className={`inline-flex items-center px-3 py-1 rounded-full text-[10px] font-semibold ${isPremium ? 'bg-[#FFF1C2] text-[#916400]' : 'bg-gray-100 text-gray-600'}`}>
+              {isPremium ? 'Premium user' : 'Free user'}
+            </span>
+          </div>
+          <div className="mt-4">
+            <p className="text-xs uppercase tracking-[0.25em] text-gray-400">
+              Total Coins
+            </p>
+            <p className="text-5xl font-black text-[#151921] mt-1">
+              {coins}
+            </p>
+            <p className="text-xs text-gray-500 mt-1">Coins</p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-3xl p-5 shadow-sm border border-white">
+          <div className="grid grid-cols-4 gap-3">
+            {actions.map((action) => (
+              <button
+                key={action.key}
+                onClick={() => handleAction(action.label)}
+                className="flex flex-col items-center gap-2"
+              >
+                <div className="w-12 h-12 rounded-full bg-[#F3F0FF] flex items-center justify-center text-[#5F48E6]">
+                  <Coins className="w-5 h-5" />
+                </div>
+                <span className="text-[11px] text-[#151921] text-center leading-tight">
+                  {action.label}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-[#FFF4E5] rounded-3xl p-4 border border-[#FFE0B8] text-xs text-[#8A5A1F]">
+          <p className="font-semibold mb-1">How Coins work</p>
+          <p>
+            Earn Clicksol Coins by engaging with the community and redeem them for coupons, gifts and special surprises.
+          </p>
+        </div>
       </div>
     </div>
   );

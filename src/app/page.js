@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useMemo } from 'react';
-import { Home, Gamepad2, MessageCircle, User, Plus, ArrowLeft } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import {
   DAILY_QUESTIONS,
   INITIAL_POSTS,
@@ -13,6 +13,7 @@ import PlazaTab from '../components/tabs/PlazaTab';
 import GamesTab from '../components/tabs/GamesTab';
 import ChatTab from '../components/tabs/ChatTab';
 import MeTab from '../components/tabs/MeTab';
+import BottomTabBar from '../components/BottomTabBar';
 import {
   PostItem,
   NewPostOverlay,
@@ -85,6 +86,8 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('plaza');
   const [showNewPostOverlay, setShowNewPostOverlay] = useState(false);
   const [posts, setPosts] = useState(INITIAL_POSTS);
+  const [drafts, setDrafts] = useState([]);
+  const [editingDraftId, setEditingDraftId] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
   const [showQuestionModal, setShowQuestionModal] = useState(true);
   const [blockedUsers, setBlockedUsers] = useState([]);
@@ -97,6 +100,20 @@ export default function App() {
   const [otpError, setOtpError] = useState('');
   const [showMbtiModal, setShowMbtiModal] = useState(false);
   const [mbtiSet, setMbtiSet] = useState(null);
+  const [isTabBarHidden, setIsTabBarHidden] = useState(false);
+
+  // Lock scroll on auth screens (before entering main app)
+  useEffect(() => {
+    // Lock scroll only on initial Auth landing screen
+    if (!currentUser && authStage === 'landing') {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [currentUser, authStage]);
 
   const updatePendingUser = (payload) =>
     setPendingUser((prev) => ({ ...prev, ...payload }));
@@ -143,6 +160,28 @@ export default function App() {
     setPosts([newPost, ...posts]);
   };
 
+  const handleSaveDraft = (content) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    setDrafts((prev) => {
+      if (editingDraftId) {
+        return prev.map((d) =>
+          d.id === editingDraftId
+            ? { ...d, content: trimmed, createdAt: Date.now() }
+            : d
+        );
+      }
+      return [
+        {
+          id: Date.now(),
+          content: trimmed,
+          createdAt: Date.now()
+        },
+        ...prev
+      ];
+    });
+  };
+
   const handleLikePost = (postId) => {
     const updatedPosts = posts.map((post) =>
       post.id === postId
@@ -158,6 +197,15 @@ export default function App() {
       const refreshed = updatedPosts.find((post) => post.id === postId);
       refreshed && setSelectedPost(refreshed);
     }
+  };
+
+  const handleDeleteDraft = (id) => {
+    setDrafts((prev) => prev.filter((d) => d.id !== id));
+  };
+
+  const handleOpenDraftForEdit = (id) => {
+    setEditingDraftId(id);
+    setShowNewPostOverlay(true);
   };
 
   const handleAddComment = (postId, text) => {
@@ -442,30 +490,59 @@ export default function App() {
     () =>
       [
         'flex-1',
-        'bg-[#F3F0FF]',
+        'bg-white',
         'relative',
-        isChatOverlayActive
+        isChatOverlayActive || isTabBarHidden
           ? 'overflow-hidden pt-0 pb-0'
-          : 'overflow-y-auto scrollbar-auto-hide scroll-smooth pb-40 pt-4'
+          : 'overflow-y-auto scrollbar-auto-hide scroll-smooth pb-40 pt-0'
       ].join(' '),
-    [isChatOverlayActive]
+    [isChatOverlayActive, isTabBarHidden]
   );
 
+  const plazaRef = React.useRef(null);
+
+  // When auth flow is not in main app, render auth screens
   if (!currentUser || authStage !== 'app') {
     return (
-      <div className="min-h-screen w-full bg-[#F3F0FF] font-sans flex flex-col">
+      <div className="min-h-screen w-full bg-white font-sans flex flex-col">
         <div className="flex-1">{renderAuthStage()}</div>
       </div>
     );
   }
 
+  // When composing a new post, show Create Post as a dedicated full-screen page
+  if (showNewPostOverlay) {
+    return (
+      <div className="min-h-[100dvh] w-full bg-white font-sans flex flex-col">
+        <NewPostOverlay
+          onClose={() => {
+            setShowNewPostOverlay(false);
+            setEditingDraftId(null);
+          }}
+          onPost={handleNewPost}
+          onSaveDraft={handleSaveDraft}
+          onDiscardDraft={(id) => {
+            if (id) handleDeleteDraft(id);
+          }}
+          draftId={editingDraftId}
+          initialContent={
+            editingDraftId
+              ? drafts.find((d) => d.id === editingDraftId)?.content || ''
+              : ''
+          }
+        />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen w-full bg-[#F3F0FF] font-sans flex flex-col">
+    <div className="min-h-screen w-full bg-white font-sans flex flex-col">
       <div className="flex-1 flex flex-col h-full relative overflow-hidden">
         {/* Main Content Area */}
         <div className={mainContentClasses}>
           {activeTab === 'plaza' && (
             <PlazaTab
+              ref={plazaRef}
               posts={posts}
               onLikePost={handleLikePost}
               onAddComment={handleAddComment}
@@ -483,6 +560,7 @@ export default function App() {
           {activeTab === 'me' && (
             <MeTab
               user={currentUser}
+              drafts={drafts}
               posts={posts}
               onLikePost={handleLikePost}
               onAddComment={handleAddComment}
@@ -493,183 +571,63 @@ export default function App() {
               onRedeemCoupon={handleRedeemCoupon}
               onCouponStatusChange={handleCouponStatusChange}
               onUserChange={handleUserProfileChange}
+              onSectionChange={(section) =>
+                setIsTabBarHidden(section !== 'main')
+              }
+              onOpenDraft={handleOpenDraftForEdit}
+              onDeleteDraft={handleDeleteDraft}
             />
           )}
         </div>
 
         {/* Post Detail Overlay */}
         {selectedPost && (
-          <div className="fixed inset-0 z-50 bg-[#F3F0FF] flex flex-col animate-in slide-in-from-right duration-300">
-            <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 pt-6 bg-white/80 backdrop-blur-sm">
-              <button onClick={() => setSelectedPost(null)}>
-                <ArrowLeft className="w-6 h-6 text-[#151921]" />
-              </button>
-              <span className="font-bold text-[#151921]">Post Details</span>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 pb-24">
-              <PostItem
-                post={selectedPost}
-                onLike={handleLikePost}
-                onAddComment={handleAddComment}
-                onOpenDetail={() => {}}
-                isDetailView
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Fixed Bottom Navigation with Integrated FAB */}
-        {!isChatOverlayActive && (
-          <div className="fixed bottom-0 left-0 right-0 pointer-events-none z-50">
-            <div className="px-4 pb-4 pt-2 pointer-events-auto">
-              <div className="bg-white rounded-2xl px-6 py-4 shadow-[0_8px_30px_rgb(0,0,0,0.12)] relative">
-                {activeTab === 'plaza' ? (
-                  <div className="grid grid-cols-5 items-center justify-items-center">
-                    <button
-                      onClick={() => setActiveTab('plaza')}
-                      className={`flex flex-col items-center gap-1 ${
-                        activeTab === 'plaza'
-                          ? 'text-[#5F48E6]'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      <Home
-                        className={`w-6 h-6 ${
-                          activeTab === 'plaza' ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold">PLAZA</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('pets')}
-                      className={`flex flex-col items-center gap-1 ${
-                        activeTab === 'pets'
-                          ? 'text-[#5F48E6]'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      <Gamepad2
-                        className={`w-6 h-6 ${
-                          activeTab === 'pets' ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold">GAMES</span>
-                    </button>
-                    <div className="relative w-full h-full flex justify-center">
-                      <button
-                        onClick={() => setShowNewPostOverlay(true)}
-                        className="absolute -top-12 w-14 h-14 bg-[#5F48E6] rounded-full flex items-center justify-center shadow-[0_8px_20px_rgba(95,72,230,0.4)] hover:scale-105 transition-transform border-4 border-[#F3F0FF]"
-                      >
-                        <Plus className="w-8 h-8 text-white" />
-                      </button>
-                    </div>
-                    <button
-                      onClick={() => setActiveTab('chat')}
-                      className={`flex flex-col items-center gap-1 ${
-                        activeTab === 'chat'
-                          ? 'text-[#5F48E6]'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      <MessageCircle
-                        className={`w-6 h-6 ${
-                          activeTab === 'chat' ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold">CHAT</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('me')}
-                      className={`flex flex-col items-center gap-1 ${
-                        activeTab === 'me'
-                          ? 'text-[#5F48E6]'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      <User
-                        className={`w-6 h-6 ${
-                          activeTab === 'me' ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold">ME</span>
-                    </button>
-                  </div>
-                ) : (
-                  <div className="flex justify-evenly items-center">
-                    <button
-                      onClick={() => setActiveTab('plaza')}
-                      className={`flex flex-col items-center gap-1 w-16 ${
-                        activeTab === 'plaza'
-                          ? 'text-[#5F48E6]'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      <Home
-                        className={`w-6 h-6 ${
-                          activeTab === 'plaza' ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold">PLAZA</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('pets')}
-                      className={`flex flex-col items-center gap-1 w-16 ${
-                        activeTab === 'pets'
-                          ? 'text-[#5F48E6]'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      <Gamepad2
-                        className={`w-6 h-6 ${
-                          activeTab === 'pets' ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold">GAMES</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('chat')}
-                      className={`flex flex-col items-center gap-1 w-16 ${
-                        activeTab === 'chat'
-                          ? 'text-[#5F48E6]'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      <MessageCircle
-                        className={`w-6 h-6 ${
-                          activeTab === 'chat' ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold">CHAT</span>
-                    </button>
-                    <button
-                      onClick={() => setActiveTab('me')}
-                      className={`flex flex-col items-center gap-1 w-16 ${
-                        activeTab === 'me'
-                          ? 'text-[#5F48E6]'
-                          : 'text-gray-400'
-                      }`}
-                    >
-                      <User
-                        className={`w-6 h-6 ${
-                          activeTab === 'me' ? 'fill-current' : ''
-                        }`}
-                      />
-                      <span className="text-[10px] font-bold">ME</span>
-                    </button>
-                  </div>
-                )}
+          <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in slide-in-from-right duration-300">
+            <div className="min-h-screen flex flex-col">
+              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 pt-6 bg-white">
+                <button onClick={() => setSelectedPost(null)}>
+                  <ArrowLeft className="w-6 h-6 text-[#151921]" />
+                </button>
+                <span className="font-bold text-[#151921]">
+                  Post Details
+                </span>
+              </div>
+              <div className="p-4 pb-28 bg-white">
+                <PostItem
+                  post={selectedPost}
+                  onLike={handleLikePost}
+                  onAddComment={handleAddComment}
+                  onOpenDetail={() => {}}
+                  isDetailView
+                />
               </div>
             </div>
           </div>
         )}
 
-        {/* Modals */}
-        {showNewPostOverlay && (
-          <NewPostOverlay
-            onClose={() => setShowNewPostOverlay(false)}
-            onPost={handleNewPost}
+        {/* Fixed Bottom Navigation with integrated Post action */}
+        {!isChatOverlayActive && !isTabBarHidden && (
+          <BottomTabBar
+            activeTab={activeTab}
+            onChangeTab={(next) => {
+              if (next === 'plaza' && activeTab === 'plaza') {
+                if (
+                  plazaRef.current &&
+                  typeof plazaRef.current.scrollToTopAndRefresh === 'function'
+                ) {
+                  plazaRef.current.scrollToTopAndRefresh();
+                }
+              } else {
+                setActiveTab(next);
+              }
+            }}
+            onOpenPost={() => {
+              setEditingDraftId(null);
+              setShowNewPostOverlay(true);
+            }}
           />
         )}
+        {/* Modals */}
         {showQuestionModal && (
           <TodaysQuestionModal
             question={todaysQuestion}
@@ -677,8 +635,7 @@ export default function App() {
           />
         )}
 
-        {/* Home Indicator */}
-        <div className="absolute bottom-1 left-1/2 transform -translate-x-1/2 w-32 h-1 bg-gray-300 rounded-full z-30" />
+        {/* Home Indicator removed for web */}
       </div>
 
       {showMbtiModal && !currentUser?.mbti && mbtiSet && (
