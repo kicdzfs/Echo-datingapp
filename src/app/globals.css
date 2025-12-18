@@ -3,6 +3,17 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --surface: #ffffff;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+}
+
+[data-theme='dark'] {
+  --background: #0b1220;
+  --foreground: #e2e8f0;
+  --surface: #0f172a;
+  --muted: #94a3b8;
+  --border: #1f2937;
 }
 
 @theme inline {
@@ -18,14 +29,33 @@ body {
 }
 
 body {
-  background: #e0d9ff;
+  background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
 
+#modal-root {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  pointer-events: none;
+}
+
+#modal-root > * {
+  pointer-events: auto;
+}
+
+.auth-surface {
+  background: linear-gradient(180deg, #E0D9FF 0%, #E8E2FF 45%, #F3F0FF 100%);
+}
+
+[data-theme='dark'] .auth-surface {
+  background: #0b1220;
+}
+
 .app-screen {
   min-height: 100vh;
-  background-color: #d7d0ff;
+  background-color: var(--background);
 }
 
 input::placeholder,
@@ -37,7 +67,45 @@ textarea::placeholder {
 input,
 textarea,
 select {
-  color: #151921;
+  color: var(--foreground);
+}
+
+[data-theme='dark'] .bg-white {
+  background-color: var(--surface) !important;
+}
+
+[data-theme='dark'] .bg-\[\#F3F0FF\],
+[data-theme='dark'] .bg-\[\#FBFAF3\],
+[data-theme='dark'] .bg-gray-50,
+[data-theme='dark'] .bg-gray-100 {
+  background-color: #10182b !important;
+}
+
+[data-theme='dark'] .text-gray-400 {
+  color: var(--muted) !important;
+}
+
+[data-theme='dark'] .text-gray-500 { color: #cbd5e1 !important; }
+[data-theme='dark'] .text-gray-700 { color: #e5e7eb !important; }
+[data-theme='dark'] .text-\[\#151921\] { color: #e2e8f0 !important; }
+[data-theme='dark'] .text-\[\#5F48E6\] { color: #c7b5ff !important; }
+
+[data-theme='dark'] .border-gray-100,
+[data-theme='dark'] .border-gray-200,
+[data-theme='dark'] .border-gray-300 {
+  border-color: var(--border) !important;
+}
+
+[data-theme='dark'] input,
+[data-theme='dark'] textarea,
+[data-theme='dark'] select {
+  background-color: #0f172a;
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+[data-theme='dark'] body {
+  background: var(--background);
 }
 
 @media (max-width: 1024px) {
@@ -79,4 +147,78 @@ select {
 
 .safe-bottom {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);
+}
+[data-theme='dark'] .bg-gray-200,
+[data-theme='dark'] .bg-gray-300 {
+  background-color: #1f2937 !important;
+}
+
+[data-theme='dark'] .text-gray-300 {
+  color: #9ca3af !important;
+}
+
+[data-theme='dark'] .placeholder-gray-400::placeholder {
+  color: #cbd5e1;
+}
+
+[data-theme='dark'] .shadow-sm {
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35) !important;
+}
+
+[data-theme='dark'] .bg-surface-card {
+  background-color: #111a2e;
+}
+
+[data-theme='dark'] .text-muted { color: #a8b3cf; }
+
+[data-theme='dark'] .bottom-nav {
+  background-color: rgba(15, 23, 42, 0.95) !important;
+  border-color: #1f2937 !important;
+}
+
+[data-theme='dark'] .bottom-nav .tab-active {
+  color: #c7b5ff !important;
+}
+
+[data-theme='dark'] .bottom-nav .tab-inactive {
+  color: #9fb0cc !important;
+}
+
+[data-theme='dark'] .bottom-nav .fab-post {
+  background: linear-gradient(135deg, #7c5bff 0%, #5f48e6 100%) !important;
+  border-color: #0f172a !important;
+}
+
+[data-theme='dark'] .bottom-nav svg { stroke: currentColor; }
+
+.auth-card { transition: background-color 0.2s ease, border-color 0.2s ease; }
+[data-theme='dark'] .auth-card {
+  background-color: #111a2e !important;
+  border: 1px solid #1f2937 !important;
+}
+
+.auth-button-dark {
+  background-color: #151921;
+  color: #fff;
+}
+[data-theme='dark'] .auth-button-dark {
+  background-color: #0f172a !important;
+  border: 1px solid #2b3550 !important;
+  color: #e2e8f0 !important;
+}
+
+.auth-social {
+  background-color: #ffffff;
+  color: #151921;
+}
+[data-theme='dark'] .auth-social {
+  background-color: #0f172a !important;
+  color: #e2e8f0 !important;
+  border: 1px solid #1f2937 !important;
+}
+
+.post-card { transition: background-color 0.2s ease, border-color 0.2s ease; }
+[data-theme='dark'] .post-card {
+  background-color: #0f172a !important;
+  border-color: #1f2937 !important;
 }

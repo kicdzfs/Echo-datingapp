@@ -30,7 +30,8 @@ import {
   User,
   Moon,
   LifeBuoy,
-  Database
+  Database,
+  ShieldCheck
 } from 'lucide-react';
 import {
   GAMES_LIST,
@@ -42,6 +43,7 @@ import {
   MALL_ITEMS
 } from '../data/mockData';
 import { Image as ImageIcon, Hash, Smile } from 'lucide-react';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
 
 // --- Helper functions & hooks ---
 
@@ -263,12 +265,13 @@ export const CommentPopover = ({ isOpen, onClose, onSubmit }) => {
 export const PostItem = ({
   post,
   onLike,
-  onAddComment,
   onOpenDetail,
+  onCommentPress,
+  onOpenComments,
+  commentsAnchorRef,
   isDetailView = false
 }) => {
   const [isShareOpen, setShareOpen] = useState(false);
-  const [isCommentOpen, setCommentOpen] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const MAX_LENGTH = 100;
   const plainContent = (post.content || '').replace(/<[^>]+>/g, '');
@@ -277,14 +280,8 @@ export const PostItem = ({
     ? `${plainContent.substring(0, MAX_LENGTH)}...`
     : plainContent;
 
-  const toggleComment = () => {
-    setCommentOpen(!isCommentOpen);
-    setShareOpen(false);
-  };
-
   const openShare = () => {
     setShareOpen(true);
-    setCommentOpen(false);
   };
   const handleReport = () => {
     setShowReport(false);
@@ -293,23 +290,28 @@ export const PostItem = ({
 
   return (
     <div
-      className={`w-full bg-white px-4 py-3 relative border-b border-black/5 ${
-        isDetailView ? '' : ''
-      }`}
+      className={`post-card w-full bg-white dark:bg-[#0f172a] px-4 py-3 relative border-b border-black/5 dark:border-[#1f2937]`}
     >
       <div className="flex justify-between items-start mb-3">
         <div
           className="flex gap-3"
-          onClick={!isDetailView ? onOpenDetail : undefined}
+          onClick={
+            !isDetailView
+              ? () => {
+                  console.log('[post] card click -> open detail', post.id);
+                  onOpenDetail?.();
+                }
+              : undefined
+          }
         >
           <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center text-xl">
             {post.avatar}
           </div>
           <div>
-            <h4 className="font-bold text-sm text-[#151921]">
+            <h4 className="font-bold text-sm text-[#151921] dark:text-gray-100">
               {post.user}
             </h4>
-            <span className="text-xs text-gray-400">
+            <span className="text-xs text-gray-400 dark:text-gray-400">
               {formatTime(post.timestamp)}
             </span>
           </div>
@@ -345,14 +347,21 @@ export const PostItem = ({
       >
         {isDetailView ? (
           <div
-            className="text-sm text-gray-700 leading-relaxed break-words"
+            className="text-sm text-gray-700 dark:text-gray-100 leading-relaxed break-words"
             dangerouslySetInnerHTML={{ __html: post.content }}
           />
         ) : (
-          <p className="text-sm text-gray-700 leading-relaxed">
+          <p className="text-sm text-gray-700 dark:text-gray-100 leading-relaxed">
             {displaySnippet}
             {isLong && (
-              <span className="text-[#5F48E6] font-bold ml-1 cursor-pointer">
+              <span
+                className="text-[#5F48E6] dark:text-[#c7b5ff] font-bold ml-1 cursor-pointer"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  console.log('[post] see more click -> open detail', post.id);
+                  onOpenDetail?.();
+                }}
+              >
                 See more
               </span>
             )}
@@ -367,40 +376,45 @@ export const PostItem = ({
           onClick={!isDetailView ? onOpenDetail : undefined}
         />
       )}
-      <div className="flex justify-between items-center pt-2 border-t border-gray-100 relative">
-        <div className="flex gap-6">
+      <div className="flex items-center justify-between pt-2 border-t border-gray-100 relative text-xs">
+        <div className="flex items-center gap-6">
           <button
             onClick={(e) => {
               e.stopPropagation();
               onLike(post.id);
             }}
-            className={`flex items-center gap-1 text-xs transition-all active:scale-125 ${
-              post.isLiked ? 'text-[#5F48E6]' : 'text-gray-400'
+            className={`flex items-center gap-1 transition-all active:scale-125 ${
+              post.isLiked ? 'text-[#5F48E6]' : 'text-gray-400 dark:text-gray-300'
             }`}
           >
             <i
               className={`fa-solid fa-heart-pulse text-lg ${
-                post.isLiked ? 'text-[#5F48E6]' : 'text-gray-400'
+                post.isLiked ? 'text-[#5F48E6]' : 'text-gray-400 dark:text-gray-300'
               }`}
             ></i>
-            <span className="ml-1">{post.likes}</span>
+            <span className="ml-1 tabular-nums min-w-[2.5ch] text-left">
+              {post.likes}
+            </span>
           </button>
-          <div className="relative">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleComment();
-              }}
-              className="flex items-center gap-1 text-gray-400 text-xs"
-            >
-              <MessageSquare className="w-4 h-4" /> {post.comments.length}
-            </button>
-            <CommentPopover
-              isOpen={isCommentOpen}
-              onClose={() => setCommentOpen(false)}
-              onSubmit={(text) => onAddComment(post.id, text)}
-            />
-          </div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onOpenComments) {
+                console.log('[post] comment icon -> open detail comments', post.id);
+                onOpenComments();
+              } else if (onCommentPress) {
+                onCommentPress();
+              } else if (onOpenDetail) {
+                onOpenDetail();
+              }
+            }}
+            className="flex items-center gap-1 text-gray-400 dark:text-gray-300"
+          >
+            <MessageSquare className="w-4 h-4" />
+            <span className="tabular-nums min-w-[2.5ch] text-left">
+              {post.comments.length}
+            </span>
+          </button>
         </div>
         <div className="relative">
           <button
@@ -408,9 +422,12 @@ export const PostItem = ({
               e.stopPropagation();
               openShare();
             }}
-            className="text-gray-400 flex items-center gap-1 text-xs"
+            className="text-gray-400 flex items-center gap-1"
           >
-            <Share2 className="w-4 h-4" /> {post.shares}
+            <Share2 className="w-4 h-4" />
+            <span className="tabular-nums min-w-[2.5ch] text-left">
+              {post.shares}
+            </span>
           </button>
           <SharePopover
             isOpen={isShareOpen}
@@ -420,15 +437,15 @@ export const PostItem = ({
       </div>
       {!isDetailView && post.comments.length > 0 && (
         <div
-          className="mt-3 bg-gray-50 rounded-xl p-3 space-y-1.5"
+          className="mt-3 bg-gray-50 dark:bg-[#111a2e] rounded-xl p-3 space-y-1.5"
           onClick={onOpenDetail}
         >
-          {post.comments.slice(0, 3).map((c) => (
+          {post.comments.slice(0, 2).map((c) => (
             <div
               key={c.id}
-              className="text-xs text-gray-600"
+              className="text-xs text-gray-600 dark:text-gray-200"
             >
-              <span className="font-bold text-[#151921] mr-1">
+              <span className="font-bold text-[#151921] dark:text-gray-100 mr-1">
                 {c.user}:
               </span>
               {c.text.length > 40
@@ -443,24 +460,28 @@ export const PostItem = ({
           )}
         </div>
       )}
-      {isDetailView && post.comments.length > 0 && (
+      {isDetailView && (
         <div className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+          <div ref={commentsAnchorRef} className="h-0" />
           <h3 className="font-bold text-sm text-[#151921]">
             Comments
           </h3>
+          {post.comments.length === 0 && (
+            <p className="text-xs text-gray-400 dark:text-gray-300">No comments yet.</p>
+          )}
           {post.comments.map((c) => (
             <div
               key={c.id}
               className="flex gap-3"
             >
-              <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center text-xs font-bold text-gray-500 shrink-0">
+              <div className="w-8 h-8 bg-gray-100 dark:bg-[#1f2937] rounded-full flex items-center justify-center text-xs font-bold text-gray-500 dark:text-gray-200 shrink-0">
                 {c.user[0]}
               </div>
-              <div className="bg-gray-50 p-3 rounded-2xl rounded-tl-none">
-                <span className="font-bold text-xs text-[#151921] block mb-1">
+              <div className="bg-gray-50 dark:bg-[#111a2e] p-3 rounded-2xl rounded-tl-none">
+                <span className="font-bold text-xs text-[#151921] dark:text-gray-100 block mb-1">
                   {c.user}
                 </span>
-                <span className="text-xs text-gray-700">
+                <span className="text-xs text-gray-700 dark:text-gray-200">
                   {c.text}
                 </span>
               </div>
@@ -488,6 +509,7 @@ export const NewPostOverlay = ({
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showTagList, setShowTagList] = useState(false);
   const fileInputRef = useRef(null);
+  const keyboardInset = useKeyboardInset();
 
   useEffect(() => {
     setContent(initialContent || '');
@@ -656,7 +678,7 @@ export const NewPostOverlay = ({
   ];
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-white">
+    <div className="min-h-[100dvh] flex flex-col bg-white relative">
       {/* Top bar */}
       <div className="shrink-0 bg-white px-4 py-3 flex justify-between items-center shadow-sm">
         <button
@@ -698,7 +720,19 @@ export const NewPostOverlay = ({
         </div>
       </div>
       {/* bottom toolbar fixed near keyboard / safe-area aware */}
-      <div className="fixed left-0 right-0 bottom-[env(safe-area-inset-bottom,0px)] z-30 bg-white/95 backdrop-blur border-t border-gray-100 px-4 py-2 flex items-center justify-between text-sm text-gray-500">
+      {keyboardInset > 0 && (
+        <div
+          className="absolute left-0 right-0 bottom-0 bg-white z-20 pointer-events-none"
+          style={{ height: keyboardInset }}
+        />
+      )}
+      <div
+        className="absolute left-0 right-0 bottom-0 z-30 bg-white border-t border-gray-100 px-4 py-3 flex items-center justify-between text-sm text-gray-500"
+        style={{
+          paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 10px)`,
+          transform: `translateY(-${keyboardInset}px)`
+        }}
+      >
         <div className="flex items-center gap-4">
           <button
             type="button"
@@ -815,8 +849,8 @@ export const NewPostOverlay = ({
 };
 
 export const TodaysQuestionModal = ({ question, onClose }) => (
-  <div className="fixed inset-0 z-40 bg-black/60 flex items-center justify-center p-6 animate-in fade-in duration-300">
-    <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl transform scale-100 transition-all relative overflow-hidden">
+  <div className="fixed inset-0 z-60 flex items-center justify-center p-6 animate-in fade-in duration-300 pointer-events-none">
+    <div className="bg-white w-full max-w-sm rounded-3xl p-6 shadow-2xl transform scale-100 transition-all relative overflow-hidden pointer-events-auto">
       <div className="absolute top-0 left-0 h-full w-1.5 bg-[#0BAB7C]" />
       <div className="mb-2 flex items-center gap-2">
         <span className="text-2xl">📅</span>
@@ -841,6 +875,12 @@ export const TodaysQuestionModal = ({ question, onClose }) => (
           <X className="w-6 h-6 text-gray-400 group-hover:text-[#FF4D4F]" />
         </button>
       </div>
+      <button
+        onClick={onClose}
+        className="mt-4 w-full py-3 rounded-xl bg-[#F3F0FF] border-2 border-transparent hover:border-[#7B77A3] text-sm font-semibold text-[#151921] transition-all"
+      >
+        Not Sure
+      </button>
       <p className="text-[10px] text-gray-400 text-center mt-6">
         Answering helps us personalize your experience.
       </p>
@@ -853,28 +893,78 @@ export const TodaysQuestionModal = ({ question, onClose }) => (
 export const AIChatView = ({ onClose }) => {
   const [messages, setMessages] = useState([
     {
-      id: 1,
+      id: 'intro',
       sender: 'ai',
-      text: 'Hello! I am Echo AI. How can I help you today with your relationships or finding a match?'
+      text:
+        "Hi, I'm Clicksol AI, a warm, compassionate support chatbot for your dating journey, here to listen, comfort, and help you through the ups and downs."
     }
   ]);
   const [input, setInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
-    const userMsg = { id: Date.now(), sender: 'user', text: input };
-    setMessages([...messages, userMsg]);
+  const handleSendMessage = async () => {
+    const trimmed = input.trim();
+    if (!trimmed || isSending) return;
+
+    const userMsg = { id: Date.now(), sender: 'user', text: trimmed };
+    const thinkingId = `${Date.now()}-thinking`;
+    const thinkingMsg = {
+      id: thinkingId,
+      sender: 'ai',
+      text: 'Thinking…',
+      isThinking: true
+    };
+
+    const nextMessages = [...messages, userMsg, thinkingMsg];
+    setMessages(nextMessages);
     setInput('');
-    setTimeout(() => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          sender: 'ai',
-          text: 'That is an interesting perspective! Tell me more.'
-        }
-      ]);
-    }, 1000);
+    setIsSending(true);
+
+    try {
+      const payload = {
+        messages: nextMessages
+          .filter((m) => !m.isThinking)
+          .map((m) => ({
+            role: m.sender === 'user' ? 'user' : 'assistant',
+            text: m.text
+          }))
+      };
+
+      const res = await fetch('/api/clicksol-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      const data = await res.json();
+      const replyText =
+        (data && data.ok && typeof data.reply === 'string' && data.reply.trim()) ||
+        "Sorry, I couldn’t reply just now. Please try again in a moment.";
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === thinkingId
+            ? { id: Date.now(), sender: 'ai', text: replyText }
+            : m
+        )
+      );
+    } catch (error) {
+      console.error('Clicksol AI fetch error:', error);
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === thinkingId
+            ? {
+                id: Date.now(),
+                sender: 'ai',
+                text:
+                  "Network seems unstable, I couldn’t reply just now. Please try again in a moment."
+              }
+            : m
+        )
+      );
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -889,7 +979,7 @@ export const AIChatView = ({ onClose }) => {
               🤖
             </div>
             <h2 className="font-bold text-lg text-[#151921]">
-              Echo AI
+              Clicksol AI
             </h2>
           </div>
         </div>
@@ -898,17 +988,34 @@ export const AIChatView = ({ onClose }) => {
             <div
               key={m.id}
               className={`flex ${
-                m.sender === 'user' ? 'justify-end' : 'justify-start'
+        (m.sender || m.from || m.role) === 'user'
+                  ? 'justify-end'
+                  : 'justify-start'
               }`}
             >
               <div
                 className={`max-w-[80%] p-3 rounded-2xl text-sm ${
-                  m.sender === 'user'
+                  (m.sender || m.from || m.role) === 'user'
                     ? 'bg-[#5F48E6] text-white rounded-tr-none'
                     : 'bg-white text-gray-700 rounded-tl-none shadow-sm'
+                } ${
+                  m.isError
+                    ? 'border border-red-200 text-red-600 bg-red-50'
+                    : ''
                 }`}
               >
-                {m.text}
+                {m.isThinking ? (
+                  <span className="flex items-center gap-2 text-gray-500">
+                    <span className="animate-pulse">Thinking…</span>
+                    <span className="flex gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse [animation-delay:100ms]" />
+                      <span className="w-1.5 h-1.5 rounded-full bg-gray-400 animate-pulse [animation-delay:200ms]" />
+                    </span>
+                  </span>
+                ) : (
+                  m.text
+                )}
               </div>
             </div>
           ))}
@@ -917,13 +1024,18 @@ export const AIChatView = ({ onClose }) => {
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+            onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
             className="flex-1 bg-gray-100 rounded-full px-4 py-2 text-sm outline-none"
             placeholder="Ask AI anything..."
           />
           <button
-            onClick={handleSend}
-            className="bg-[#5F48E6] text-white p-2 rounded-full"
+            onClick={handleSendMessage}
+            disabled={isSending}
+            className={`p-2 rounded-full ${
+              isSending
+                ? 'bg-gray-300 text-gray-500'
+                : 'bg-[#5F48E6] text-white'
+            }`}
           >
             <Send className="w-5 h-5" />
           </button>
@@ -1464,7 +1576,7 @@ export const PersonalPlaza = ({
 
 
   return (
-    <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 bg-white z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -1563,7 +1675,7 @@ export const EMall = ({
                 key={brand.id}
                 className="flex flex-col items-center gap-2"
               >
-                <div className="w-20 h-20 rounded-full bg-white shadow-md flex items-center justify-center p-2 border border-gray-100 overflow-hidden">
+                <div className="w-20 h-20 rounded-full bg-white shadow-md flex items-center justify-center p-3 border border-gray-100 overflow-hidden">
                   <img
                     src={brand.logo}
                     alt={brand.name}
@@ -1581,34 +1693,37 @@ export const EMall = ({
     );
   }
 
-  const renderBrandRow = () => (
-    <div className="flex justify-between mb-8 px-2">
-      {PARTNER_BRANDS.map((brand, index) => (
+  const renderBrandRow = () => {
+    const topBrands = PARTNER_BRANDS.slice(0, 5);
+    return (
+      <div className="flex justify-between mb-8 px-2">
+        {topBrands.map((brand, index) => (
+          <div
+            key={index}
+            className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md ${brand.bg} overflow-hidden border-2 border-white cursor-pointer hover:scale-105 transition-transform`}
+          >
+            {brand.logo ? (
+              <img
+                src={brand.logo}
+                alt={brand.name}
+                className="w-full h-full object-contain p-2"
+              />
+            ) : (
+              <span className="text-[8px] text-center font-bold leading-tight px-1">
+                {brand.name}
+              </span>
+            )}
+          </div>
+        ))}
         <div
-          key={index}
-          className={`w-14 h-14 rounded-full flex items-center justify-center shadow-md ${brand.bg} overflow-hidden border-2 border-white cursor-pointer hover:scale-105 transition-transform`}
+          onClick={() => setShowMore(true)}
+          className="w-14 h-14 rounded-full flex items-center justify-center shadow-md bg-[#D7D0FF] overflow-hidden border-2 border-white cursor-pointer hover:scale-105 transition-transform"
         >
-          {brand.logo ? (
-            <img
-              src={brand.logo}
-              alt={brand.name}
-              className="w-full h-full object-contain p-1"
-            />
-          ) : (
-            <span className="text-[8px] text-center font-bold leading-tight px-1">
-              {brand.name}
-            </span>
-          )}
+          <Grid className="w-6 h-6 text-white" />
         </div>
-      ))}
-      <div
-        onClick={() => setShowMore(true)}
-        className="w-14 h-14 rounded-full flex items-center justify-center shadow-md bg-[#D7D0FF] overflow-hidden border-2 border-white cursor-pointer hover:scale-105 transition-transform"
-      >
-        <Grid className="w-6 h-6 text-white" />
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderMallGrid = () => (
     <div className="space-y-6">
@@ -2057,11 +2172,47 @@ export const VIPCenter = ({
   );
 };
 
-export const SettingsPage = ({ onBack, onOpenBlockList }) => {
-  const [darkMode, setDarkMode] = useState(false);
+export const SettingsPage = ({ onBack, onOpenBlockList, onThemeChange, theme = 'system', user }) => {
+  const [themeChoice, setThemeChoice] = useState(theme);
+  const [panel, setPanel] = useState('main');
+  const [accountInfo, setAccountInfo] = useState({
+    phone: user?.phone || '+66 080-000-0000',
+    email: user?.email || 'echo@example.com',
+    signupMethod: user?.signupMethod || 'phone'
+  });
+  const [chatPrefs, setChatPrefs] = useState({
+    readReceipts: true,
+    typingIndicators: true,
+    smartPrompts: false,
+    filterUnknown: false
+  });
+  const [storageUsage, setStorageUsage] = useState({
+    cache: 320,
+    downloads: 180,
+    media: 540
+  });
 
-  const placeholder = (label) => {
-    alert(`${label} coming soon`);
+  useEffect(() => {
+    setThemeChoice(theme);
+  }, [theme]);
+
+  const handleThemeSelect = (value) => {
+    setThemeChoice(value);
+    onThemeChange?.(value);
+  };
+
+  const socialStatus = {
+    google: accountInfo.signupMethod === 'google',
+    apple: accountInfo.signupMethod === 'apple'
+  };
+
+  const handleAccountSave = () => {
+    alert('Account details saved');
+  };
+
+  const handleClear = (key) => {
+    setStorageUsage((prev) => ({ ...prev, [key]: 0 }));
+    alert(`${key === 'cache' ? 'Cache' : 'Downloads'} cleared`);
   };
 
   const optionRows = [
@@ -2070,40 +2221,312 @@ export const SettingsPage = ({ onBack, onOpenBlockList }) => {
       icon: User,
       label: 'Account',
       desc: 'Profile, login and privacy settings',
-      onPress: () => placeholder('Account settings')
+      onPress: () => setPanel('account')
     },
     {
       key: 'chat',
       icon: MessageSquare,
       label: 'Chatting Settings',
       desc: 'Sounds, reactions and message tools',
-      onPress: () => placeholder('Chatting settings')
+      onPress: () => setPanel('chat')
     },
     {
       key: 'about',
       icon: Info,
       label: 'About',
       desc: 'Version, policies and acknowledgements',
-      onPress: () => placeholder('About Echo')
+      onPress: () => setPanel('about')
     },
     {
       key: 'help',
       icon: LifeBuoy,
       label: 'Help',
       desc: 'FAQs and contact support',
-      onPress: () => placeholder('Help center')
+      onPress: () => setPanel('help')
     },
     {
       key: 'storage',
       icon: Database,
       label: 'Manage Storage',
       desc: 'Clear cache and downloads',
-      onPress: () => placeholder('Manage storage')
+      onPress: () => setPanel('storage')
+    },
+    {
+      key: 'verify',
+      icon: ShieldCheck,
+      label: 'Identity Verification',
+      desc: 'Upload ID to verify account',
+      onPress: () => setPanel('verify')
     }
   ];
 
+  const themeOptions = [
+    { key: 'system', label: 'Follow System' },
+    { key: 'light', label: 'Light Mode' },
+    { key: 'dark', label: 'Dark Mode' }
+  ];
+
+  if (panel !== 'main' && panel !== 'verify') {
+    return (
+      <div className="fixed inset-0 bg-white z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+        <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+          <button onClick={() => setPanel('main')}>
+            <ArrowLeft className="w-6 h-6 text-[#151921]" />
+          </button>
+          <h2 className="font-bold text-lg text-[#151921]">
+            {panel === 'account' && 'Account Overview'}
+            {panel === 'chat' && 'Chatting Settings'}
+            {panel === 'about' && 'About'}
+            {panel === 'help' && 'Help'}
+            {panel === 'storage' && 'Manage Storage'}
+          </h2>
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          {panel === 'account' && (
+            <div className="bg-white dark:bg-[#0f172a] rounded-3xl p-5 shadow-sm space-y-5 border border-gray-100 dark:border-[#1f2937]">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-300">Phone</p>
+                  <p className="text-sm font-bold text-[#151921] dark:text-gray-100">{accountInfo.phone}</p>
+                </div>
+                <button className="text-sm font-semibold text-[#5F48E6]">Edit</button>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <p className="text-xs font-semibold text-gray-500 dark:text-gray-300">Email</p>
+                  <p className="text-sm font-bold text-[#151921] dark:text-gray-100">{accountInfo.email}</p>
+                </div>
+                <button className="text-sm font-semibold text-[#5F48E6]">Edit</button>
+              </div>
+
+              <div className="pt-1 border-t border-dashed border-gray-200 dark:border-[#1f2937] space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-[#151921] dark:text-gray-100">Identity Verification</p>
+                    <p className="text-xs text-gray-500 dark:text-gray-300">Upload ID to verify account</p>
+                  </div>
+                  <button className="text-sm font-semibold text-[#5F48E6]" onClick={() => setPanel('verify')}>
+                    Start
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-1 border-t border-dashed border-gray-200 dark:border-[#1f2937]">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-300">Linked</p>
+                {['google', 'apple'].map((provider) => {
+                  const isLinked = socialStatus[provider];
+                  return (
+                    <div
+                      key={provider}
+                      className="flex items-center justify-between py-2 px-3 rounded-xl bg-gray-50 dark:bg-[#111a2e] text-sm text-[#151921] dark:text-gray-100"
+                    >
+                      <span className="capitalize">
+                        {provider === 'google' ? 'Google' : 'Apple'} {isLinked ? 'linked' : 'connect'}
+                      </span>
+                      <button
+                        className="text-xs font-semibold text-[#5F48E6]"
+                        onClick={() => {
+                          alert(
+                            isLinked
+                              ? `Disconnecting ${provider}...`
+                              : `Connecting ${provider}...`
+                          );
+                        }}
+                      >
+                        {isLinked ? 'Disconnect' : 'Connect'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {panel === 'chat' && (
+            <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 border border-gray-100">
+              {[
+                { key: 'readReceipts', label: 'Read receipts' },
+                { key: 'typingIndicators', label: 'Typing indicators' },
+                { key: 'smartPrompts', label: 'AI smart prompts' },
+                { key: 'filterUnknown', label: 'Filter unknown requests' }
+              ].map((row) => (
+                <div
+                  key={row.key}
+                  className="flex items-center justify-between py-2"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-[#151921]">
+                      {row.label}
+                    </p>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={chatPrefs[row.key]}
+                    onChange={(e) =>
+                      setChatPrefs((prev) => ({
+                        ...prev,
+                        [row.key]: e.target.checked
+                      }))
+                    }
+                    className="h-5 w-5 accent-[#5F48E6]"
+                  />
+                </div>
+              ))}
+              <p className="text-[11px] text-gray-400">
+                Changes apply instantly to new conversations.
+              </p>
+            </div>
+          )}
+
+          {panel === 'about' && (
+            <div className="bg-white rounded-3xl p-5 shadow-sm space-y-3 border border-gray-100">
+              <div className="flex items-center justify-between">
+                <span className="text-sm font-semibold text-[#151921]">
+                  Clicksol version
+                </span>
+                <span className="text-sm text-gray-500">1.0.0</span>
+              </div>
+              {['Terms of Service', 'Privacy Policy', 'Community Guidelines'].map(
+                (item) => (
+                  <button
+                    key={item}
+                    className="w-full text-left py-2 flex items-center justify-between"
+                    onClick={() => alert(`${item} - opening soon`)}
+                  >
+                    <span className="text-sm font-semibold text-[#151921]">
+                      {item}
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-300" />
+                  </button>
+                )
+              )}
+            </div>
+          )}
+
+          {panel === 'help' && (
+            <div className="bg-white rounded-3xl p-5 shadow-sm space-y-3 border border-gray-100">
+              {[
+                {
+                  q: 'How do I change my MBTI?',
+                  a: 'Go to Edit Profile and update MBTI under core personality info.'
+                },
+                {
+                  q: 'How do I report an issue?',
+                  a: 'Use the three-dots menu on a post or send us a message via contact support.'
+                },
+                {
+                  q: 'How to restore purchase?',
+                  a: 'Visit VIP Center and tap Restore under your subscription.'
+                }
+              ].map((faq) => (
+                <details
+                  key={faq.q}
+                  className="bg-gray-50 rounded-2xl px-3 py-2"
+                >
+                  <summary className="text-sm font-semibold text-[#151921] cursor-pointer">
+                    {faq.q}
+                  </summary>
+                  <p className="text-xs text-gray-500 mt-1">{faq.a}</p>
+                </details>
+              ))}
+              <button
+                className="w-full mt-2 py-3 rounded-full bg-[#5F48E6] text-white font-semibold active:scale-[0.99]"
+                onClick={() => (window.location = 'mailto:support@echo.app')}
+              >
+                Contact support
+              </button>
+            </div>
+          )}
+
+          {panel === 'storage' && (
+            <div className="bg-white rounded-3xl p-5 shadow-sm space-y-4 border border-gray-100">
+              {[
+                { key: 'cache', label: 'Cache' },
+                { key: 'downloads', label: 'Offline downloads' },
+                { key: 'media', label: 'Chat media' }
+              ].map((item) => {
+                const used = storageUsage[item.key];
+                const total = 1000;
+                const pct = Math.min(100, Math.round((used / total) * 100));
+                return (
+                  <div key={item.key} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-semibold text-[#151921]">
+                        {item.label}
+                      </span>
+                      <span className="text-gray-500">{used} MB</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-gray-100">
+                      <div
+                        className="h-2 rounded-full bg-[#5F48E6]"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    {item.key !== 'media' && (
+                      <button
+                        onClick={() => handleClear(item.key)}
+                        className="text-xs text-[#5F48E6] font-semibold"
+                      >
+                        Clear {item.label.toLowerCase()}
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (panel === 'verify') {
+    return (
+      <div className="fixed inset-0 bg-white dark:bg-[#0b1220] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+        <div className="bg-white dark:bg-[#0f172a] px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+          <button onClick={() => setPanel('account')}>
+            <ArrowLeft className="w-6 h-6 text-[#151921] dark:text-gray-100" />
+          </button>
+          <h2 className="font-bold text-lg text-[#151921] dark:text-gray-100">
+            Identity Verification
+          </h2>
+        </div>
+        <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="bg-white dark:bg-[#0f172a] rounded-3xl p-5 shadow-sm border border-gray-100 dark:border-[#1f2937] space-y-3">
+            <p className="text-sm text-gray-600 dark:text-gray-200">
+              Verify your identity to keep your account secure. Upload a government ID and a selfie. This is a placeholder; final flow will be added later.
+            </p>
+            <div className="bg-gray-50 dark:bg-[#111a2e] rounded-2xl p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-[#151921] dark:text-gray-100">Upload ID</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-300">Passport / National ID / Driver license</p>
+                </div>
+                <button className="text-sm font-semibold text-[#5F48E6]">Upload</button>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-semibold text-[#151921] dark:text-gray-100">Selfie check</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-300">Take a quick selfie for match</p>
+                </div>
+                <button className="text-sm font-semibold text-[#5F48E6]">Start</button>
+              </div>
+            </div>
+            <button
+              className="w-full py-3 rounded-full bg-[#5F48E6] text-white font-semibold active:scale-[0.99]"
+              onClick={() => alert('Verification submitted')}
+            >
+              Submit for review
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 bg-white z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -2176,22 +2599,25 @@ export const SettingsPage = ({ onBack, onOpenBlockList }) => {
                   Dark Mode
                 </p>
                 <p className="text-xs text-gray-400">
-                  {darkMode ? 'Enabled' : 'Disabled'}
+                  {themeChoice === 'system'
+                    ? 'Follow System'
+                    : themeChoice === 'dark'
+                      ? 'Dark Mode'
+                      : 'Light Mode'}
                 </p>
               </div>
             </div>
-            <button
-              onClick={() => setDarkMode((prev) => !prev)}
-              className={`w-12 h-6 rounded-full relative transition-colors ${
-                darkMode ? 'bg-[#5F48E6]' : 'bg-gray-200'
-              }`}
+            <select
+              value={themeChoice}
+              onChange={(e) => handleThemeSelect(e.target.value)}
+              className="text-sm border border-gray-200 rounded-full px-3 py-1 bg-white text-[#151921] focus:outline-none focus:ring-2 focus:ring-[#5F48E6]"
             >
-              <span
-                className={`w-5 h-5 bg-white rounded-full absolute top-0.5 transition-all ${
-                  darkMode ? 'right-0.5' : 'left-0.5'
-                }`}
-              />
-            </button>
+              {themeOptions.map((opt) => (
+                <option key={opt.key} value={opt.key}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -2221,13 +2647,12 @@ export const SettingsPage = ({ onBack, onOpenBlockList }) => {
     </div>
   );
 };
-
 export const BlockList = ({
   blockedUsers = [],
   onBack,
   onUnblockUser
 }) => (
-  <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+  <div className="fixed inset-0 bg-white z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
     <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
       <button onClick={onBack}>
         <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -2408,7 +2833,7 @@ export const EditProfilePanel = ({ user, onUserChange, onBack }) => {
     profileDraft.displayName || user?.nickname || user?.name || 'New Echo';
 
   return (
-    <div className="fixed inset-0 bg-[#F3F0FF] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+    <div className="fixed inset-0 bg-white z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
       <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
         <button onClick={onBack}>
           <ArrowLeft className="w-6 h-6 text-[#151921]" />
@@ -2495,14 +2920,7 @@ export const EditProfilePanel = ({ user, onUserChange, onBack }) => {
           </div>
         ))}
       </div>
-      <div className="bg-white border-t border-gray-100 px-5 py-4">
-        <button
-          onClick={previewProfile}
-          className="w-full py-3 rounded-full bg-[#5F48E6] text-white font-semibold shadow-lg active:scale-[0.98] transition"
-        >
-          Preview
-        </button>
-      </div>
+      {/* Preview button removed as requested */}
     </div>
   );
 };
@@ -2516,17 +2934,265 @@ export const CoinCenter = ({ user, onBack }) => {
   const tierName = VIP_PLANS[subscriptionIndex]?.name || 'Free';
   const isPremium = tierName !== 'Free';
   const coins = typeof user?.points === 'number' ? user.points : 0;
+  const [view, setView] = useState('main');
+  const [transferUser, setTransferUser] = useState('');
+  const [showTransferConfirm, setShowTransferConfirm] = useState(false);
+  const [selectedDonation, setSelectedDonation] = useState(null);
 
   const actions = [
-    { key: 'exchange', label: 'Exchange coupons' },
-    { key: 'transfer', label: 'Transfer coins' },
-    { key: 'history', label: 'History' },
-    { key: 'donation', label: 'Donation' }
+    { key: 'emall', label: 'Exchange coupons', icon: 'fa-ticket' },
+    { key: 'transfer', label: 'Transfer coins', icon: 'fa-arrow-right-arrow-left' },
+    { key: 'history', label: 'History', icon: 'fa-clock-rotate-left' },
+    { key: 'donation', label: 'Donation', icon: 'fa-hand-holding-dollar' }
   ];
 
-  const handleAction = (label) => {
-    alert(`${label} coming soon`);
-  };
+  const donationOptions = [
+    {
+      key: 'children',
+      title: 'Support disabled children',
+      image:
+        'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&w=800&q=80'
+    },
+    {
+      key: 'disaster',
+      title: 'Disaster relief & rebuilding',
+      image:
+        'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&w=800&q=80'
+    },
+    {
+      key: 'animals',
+      title: 'Animal protection in Thailand',
+      image:
+        'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=800&q=80'
+    },
+    {
+      key: 'education',
+      title: 'Education for rural children',
+      image:
+        'https://images.unsplash.com/photo-1509062522246-3755977927d7?auto=format&fit=crop&w=800&q=80'
+    },
+    {
+      key: 'health',
+      title: 'Healthcare for vulnerable groups',
+      image:
+        'https://images.unsplash.com/photo-1505751172876-fa1923c5c528?auto=format&fit=crop&w=800&q=80'
+    },
+    {
+      key: 'environment',
+      title: 'Coastal clean-up in Thailand',
+      image:
+        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=800&q=80'
+    }
+  ];
+
+  const historyItems = Array.from({ length: 10 }, (_, index) => ({
+    id: index + 1,
+    title: ['Daily check-in', 'Event bonus', 'Referral', 'Purchase reward'][
+      index % 4
+    ],
+    coins: [40, 60, 80, 100, 120][index % 5],
+    time: new Date(Date.now() - index * 3600 * 1000).toLocaleString()
+  }));
+
+  const renderActions = () => (
+    <div className="bg-white rounded-3xl p-5 shadow-sm border border-white">
+      <div className="grid grid-cols-4 gap-3">
+        {actions.map((action) => (
+          <button
+            key={action.key}
+            onClick={() => setView(action.key)}
+            className="flex flex-col items-center gap-2"
+          >
+            <div className="w-12 h-12 rounded-full bg-[#F3F0FF] flex items-center justify-center text-[#5F48E6]">
+              <i className={`fa-solid ${action.icon} text-lg`} />
+            </div>
+            <span className="text-[11px] text-[#151921] text-center leading-tight">
+              {action.label}
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  if (view === 'emall') {
+    return (
+      <EMall
+        onBack={() => setView('main')}
+        user={user}
+        onRedeemCoupon={() => {}}
+        onCouponStatusChange={() => {}}
+      />
+    );
+  }
+
+  if (view === 'transfer') {
+    return (
+      <div className="fixed inset-0 bg-[#FFFDF6] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+        <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+          <button onClick={() => setView('main')}>
+            <ArrowLeft className="w-6 h-6 text-[#151921]" />
+          </button>
+          <h2 className="font-bold text-lg text-[#151921]">Transfer Coins</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-6">
+          <div className="bg-white rounded-3xl p-5 shadow-sm border border-white space-y-3">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-[#F3F0FF] flex items-center justify-center text-2xl border border-white">
+                {avatar}
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-[#151921]">{displayName}</p>
+                <p className="text-xs text-gray-500">Balance: {coins} coins</p>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <label className="text-xs text-gray-500">Recipient username</label>
+              <input
+                value={transferUser}
+                onChange={(e) => setTransferUser(e.target.value)}
+                placeholder="Enter username"
+                className="w-full border border-gray-200 rounded-2xl p-3 text-sm outline-none focus:ring-2 focus:ring-[#5F48E6]"
+              />
+            </div>
+            <button
+              disabled={!transferUser.trim()}
+              onClick={() => setShowTransferConfirm(true)}
+              className="w-full py-3 rounded-full bg-[#5F48E6] text-white font-semibold disabled:bg-gray-300"
+            >
+              Confirm transfer
+            </button>
+          </div>
+        </div>
+        {showTransferConfirm && (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+            <div className="bg-white rounded-2xl p-5 w-full max-w-sm space-y-4">
+              <p className="text-sm text-[#151921]">
+                Transfer coins to <span className="font-semibold">{transferUser}</span>?
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowTransferConfirm(false)}
+                  className="flex-1 py-2 rounded-full border border-gray-200 text-[#151921] font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    setShowTransferConfirm(false);
+                    alert(`Transfer submitted to ${transferUser}`);
+                    setTransferUser('');
+                  }}
+                  className="flex-1 py-2 rounded-full bg-[#5F48E6] text-white font-semibold"
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  if (view === 'history') {
+    return (
+      <div className="fixed inset-0 bg-[#FFFDF6] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+        <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+          <button onClick={() => setView('main')}>
+            <ArrowLeft className="w-6 h-6 text-[#151921]" />
+          </button>
+          <h2 className="font-bold text-lg text-[#151921]">History</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-3">
+          {historyItems.map((item) => (
+            <div
+              key={item.id}
+              className="bg-white rounded-2xl p-4 shadow-sm border border-white flex justify-between items-center"
+            >
+              <div>
+                <p className="text-sm font-semibold text-[#151921]">
+                  {item.title}
+                </p>
+                <p className="text-[11px] text-gray-400">{item.time}</p>
+              </div>
+              <span className="text-[#5F48E6] font-bold">+{item.coins}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  if (view === 'donation') {
+    if (selectedDonation) {
+      return (
+        <div className="fixed inset-0 bg-[#FFFDF6] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+          <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+            <button onClick={() => setSelectedDonation(null)}>
+              <ArrowLeft className="w-6 h-6 text-[#151921]" />
+            </button>
+            <h2 className="font-bold text-lg text-[#151921]">{selectedDonation.title}</h2>
+          </div>
+          <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24 space-y-4">
+            {[{ coins: 1000, baht: 20 }, { coins: 2500, baht: 50 }, { coins: 5000, baht: 100 }].map(
+              (opt) => (
+                <button
+                  key={opt.coins}
+                  onClick={() => alert(`Donated ${opt.coins} coins`)}
+                  className="w-full bg-white rounded-2xl p-4 border border-gray-100 shadow-sm flex items-center justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-semibold text-[#151921]">
+                      {opt.coins} coins
+                    </p>
+                    <p className="text-xs text-gray-500">{opt.baht} THB equivalent</p>
+                  </div>
+                  <span className="text-[#5F48E6] font-bold">Donate</span>
+                </button>
+              )
+            )}
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="fixed inset-0 bg-[#FFFDF6] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
+        <div className="bg-white px-4 py-3 flex items-center gap-3 shadow-sm pt-6">
+          <button onClick={() => setView('main')}>
+            <ArrowLeft className="w-6 h-6 text-[#151921]" />
+          </button>
+          <h2 className="font-bold text-lg text-[#151921]">Donation</h2>
+        </div>
+        <div className="flex-1 overflow-y-auto px-4 pt-6 pb-24">
+          <div className="grid grid-cols-2 gap-4">
+            {donationOptions.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => setSelectedDonation(item)}
+                className="w-full bg-white rounded-2xl overflow-hidden border border-white shadow-sm text-left"
+              >
+                <img
+                  src={item.image}
+                  alt={item.title}
+                  className="w-full h-32 object-cover"
+                />
+                <div className="p-3">
+                  <p className="text-sm font-semibold text-[#151921]">
+                    {item.title}
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Tap to choose donation amount
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-[#FFFDF6] z-40 flex flex-col overflow-hidden animate-in slide-in-from-right duration-200">
@@ -2560,24 +3226,7 @@ export const CoinCenter = ({ user, onBack }) => {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl p-5 shadow-sm border border-white">
-          <div className="grid grid-cols-4 gap-3">
-            {actions.map((action) => (
-              <button
-                key={action.key}
-                onClick={() => handleAction(action.label)}
-                className="flex flex-col items-center gap-2"
-              >
-                <div className="w-12 h-12 rounded-full bg-[#F3F0FF] flex items-center justify-center text-[#5F48E6]">
-                  <Coins className="w-5 h-5" />
-                </div>
-                <span className="text-[11px] text-[#151921] text-center leading-tight">
-                  {action.label}
-                </span>
-              </button>
-            ))}
-          </div>
-        </div>
+        {renderActions()}
 
         <div className="bg-[#FFF4E5] rounded-3xl p-4 border border-[#FFE0B8] text-xs text-[#8A5A1F]">
           <p className="font-semibold mb-1">How Coins work</p>

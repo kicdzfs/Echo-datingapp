@@ -6,7 +6,7 @@ import { RECS_LIST, CHAT_HISTORY } from '../../data/mockData';
 import { AIChatView, UserChatView } from '../SubComponents';
 
 const createInitialChats = () =>
-  CHAT_HISTORY.map((chat) => ({
+  CHAT_HISTORY.filter((chat) => chat.id !== 'clicksol-ai').map((chat) => ({
     id: chat.id,
     name: chat.name,
     avatar: chat.avatar,
@@ -326,12 +326,12 @@ const ChatTab = ({ blockedUsers = [], onBlockUser, onOverlayChange }) => {
         <h3 className="font-bold text-[#151921] mb-3 flex-shrink-0">
           Messages
         </h3>
-        <div className="bg-white rounded-2xl p-2 flex-1 overflow-y-auto space-y-1 shadow-sm scrollbar-auto-hide">
+        <div className="bg-white dark:bg-[#0b1220] rounded-2xl p-2 flex-1 overflow-y-auto space-y-2 shadow-sm scrollbar-auto-hide dark:border dark:border-white/10">
           {otherChats.map((chat) => (
             <div
               key={chat.id}
               onClick={() => handleOpenChat(chat.id)}
-              className="flex items-center gap-4 p-3 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer"
+              className="flex items-center gap-4 p-3 hover:bg-gray-50 dark:hover:bg-white/5 rounded-xl transition-colors cursor-pointer border border-transparent dark:border-white/10"
             >
               <div className="w-12 h-12 bg-pink-50 rounded-full flex items-center justify-center text-2xl flex-shrink-0 relative">
                 {chat.avatar}

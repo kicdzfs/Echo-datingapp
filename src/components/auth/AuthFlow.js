@@ -162,6 +162,18 @@ const DAY_LABELS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
 const SocialIcon = ({ provider }) => {
   const baseClass = "w-4 h-4 object-contain";
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    const update = () => setIsDark(root.dataset.theme === 'dark');
+    update();
+    const observer = new MutationObserver(update);
+    observer.observe(root, { attributes: true, attributeFilter: ['data-theme'] });
+    return () => observer.disconnect();
+  }, []);
+
   if (provider === "Google") {
     return (
       <img
@@ -185,7 +197,7 @@ const SocialIcon = ({ provider }) => {
   if (provider === "Apple") {
     return (
       <img
-        src="/apple-icon.svg"
+        src={isDark ? "/apple_white.png" : "/apple-icon.svg"}
         alt="Apple"
         className={baseClass}
         loading="lazy"
@@ -200,12 +212,12 @@ export const AuthLanding = ({
   onSocialLogin,
   onLoginExisting
 }) => (
-  <main className="min-h-screen w-full bg-gradient-to-b from-[#E0D9FF] via-[#E8E2FF] to-[#F3F0FF] overflow-hidden">
+  <main className="min-h-screen w-full auth-surface overflow-hidden">
     <div className="min-h-screen flex items-center justify-center px-4">
       <section className="w-full max-w-md bg-transparent text-center">
         <div className="flex flex-col items-center justify-center gap-5">
           <img
-            src="/logos/clicksol_icon.png"
+            src="/logos/clicksol-logo.png"
             alt="Clicksol"
             className="w-28 sm:w-32 h-auto object-contain mx-auto drop-shadow-lg"
           />
@@ -214,7 +226,7 @@ export const AuthLanding = ({
           </p>
           <button
             onClick={onSignupPhone}
-            className="w-full rounded-full bg-[#151921] text-white py-3 font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform"
+            className="w-full rounded-full bg-[#151921] text-white py-3 font-bold flex items-center justify-center gap-2 shadow-lg active:scale-95 transition-transform auth-button-dark"
           >
             <Phone className="w-4 h-4" /> Sign up with phone number
           </button>
@@ -226,7 +238,7 @@ export const AuthLanding = ({
               <button
                 key={provider}
                 onClick={() => onSocialLogin(provider)}
-                className="bg-white rounded-full py-3 shadow flex items-center justify-center text-sm font-semibold text-[#151921] active:scale-95 transition-transform"
+                className="auth-card auth-social rounded-full py-3 shadow flex items-center justify-center text-sm font-semibold text-[#151921] active:scale-95 transition-transform"
               >
                 <span className="flex items-center gap-2">
                   <SocialIcon provider={provider} />
@@ -253,7 +265,7 @@ export const AuthLanding = ({
 const UserCard = ({ user, onSelect }) => (
   <button
     onClick={() => onSelect(user)}
-    className="bg-white rounded-2xl p-4 shadow flex items-center justify-between w-full text-left active:scale-[0.99] transition-transform"
+    className="auth-card bg-white rounded-2xl p-4 shadow flex items-center justify-between w-full text-left active:scale-[0.99] transition-transform"
   >
     <div className="flex items-center gap-4">
       <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-2xl">
@@ -300,7 +312,7 @@ export const LoginScreen = ({ onBack, onSelectUser }) => {
   ];
 
   return (
-    <main className="min-h-screen w-full bg-gradient-to-b from-[#E0D9FF] via-[#E8E2FF] to-[#F3F0FF] overflow-hidden">
+    <main className="min-h-screen w-full auth-surface overflow-hidden">
       <div className="max-w-md mx-auto px-4 pt-8 pb-10 h-full">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={onBack}>
@@ -395,7 +407,7 @@ export const PhoneEntryScreen = ({
   }, []);
 
   return (
-    <main className="min-h-screen w-full bg-gradient-to-b from-[#E0D9FF] via-[#E8E2FF] to-[#F3F0FF]">
+    <main className="min-h-screen w-full auth-surface">
       <div className="max-w-md mx-auto px-4 pt-8 pb-10 h-full flex flex-col">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={onBack}>
@@ -491,7 +503,7 @@ export const PhoneEntryScreen = ({
               onChange={(e) =>
                 onChange({ phone: e.target.value.replace(/\D/g, '') })
               }
-              className="w-full h-14 border border-gray-200 rounded-2xl px-4 text-base tracking-wider outline-none focus:ring-2 focus:ring-[#5F48E6] text-[#151921] placeholder:text-[#7B77A3]"
+              className="w-full h-14 border border-gray-200 rounded-2xl px-4 text-base tracking-wider outline-none focus:ring-2 focus:ring-[#5F48E6] text-[#151921] placeholder:text-[#7B77A3] bg-white"
               placeholder={phonePlaceholder}
               required
             />
@@ -525,7 +537,7 @@ export const PhoneVerificationScreen = ({
   onBack,
   error
 }) => (
-  <main className="min-h-screen w-full bg-[#F3F0FF]">
+  <main className="min-h-screen w-full auth-surface">
     <div className="max-w-md mx-auto px-4 pt-8 pb-10 h-full flex flex-col">
       <div className="flex items-center gap-3 mb-4">
         <button onClick={onBack}>
@@ -1317,7 +1329,7 @@ export const ProfileWizard = ({
   };
 
   return (
-    <main className="min-h-screen w-full bg-[#F3F0FF]">
+  <main className="min-h-screen w-full auth-surface">
       <div className="max-w-md mx-auto px-4 pt-8 pb-10 h-full flex flex-col">
         <StepHeader
           title={titles[currentStep]}

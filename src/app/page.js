@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { ArrowLeft } from 'lucide-react';
 import {
   DAILY_QUESTIONS,
@@ -27,6 +27,8 @@ import {
   PhoneVerificationScreen,
   ProfileWizard
 } from '../components/auth/AuthFlow';
+import { useKeyboardInset } from '../hooks/useKeyboardInset';
+import ModalPortal from '../components/ModalPortal';
 
 const getConstellation = (dob) => {
   if (!dob) return '';
@@ -82,14 +84,36 @@ const createInitialProfile = () => ({
   location: ''
 });
 
+const shuffleArray = (arr) => {
+  const copy = [...arr];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+};
+
+const buildInitialPosts = () => {
+  const uniquePosts = [
+    ...new Map(INITIAL_POSTS.map((post) => [post.id, post])).values()
+  ];
+  return shuffleArray(uniquePosts);
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState('plaza');
   const [showNewPostOverlay, setShowNewPostOverlay] = useState(false);
-  const [posts, setPosts] = useState(INITIAL_POSTS);
+  const [posts, setPosts] = useState(() => buildInitialPosts());
   const [drafts, setDrafts] = useState([]);
   const [editingDraftId, setEditingDraftId] = useState(null);
   const [selectedPost, setSelectedPost] = useState(null);
-  const [showQuestionModal, setShowQuestionModal] = useState(true);
+  const [shouldFocusComment, setShouldFocusComment] = useState(false);
+  const [shouldScrollToComments, setShouldScrollToComments] = useState(false);
+  const [commentDraft, setCommentDraft] = useState('');
+  const commentInputRef = useRef(null);
+  const commentsSectionRef = useRef(null);
+  const [plazaScrollSnapshot, setPlazaScrollSnapshot] = useState(null);
+  const [showQuestionModal, setShowQuestionModal] = useState(false);
   const [blockedUsers, setBlockedUsers] = useState([]);
   const [isChatOverlayActive, setIsChatOverlayActive] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
@@ -101,6 +125,13 @@ export default function App() {
   const [showMbtiModal, setShowMbtiModal] = useState(false);
   const [mbtiSet, setMbtiSet] = useState(null);
   const [isTabBarHidden, setIsTabBarHidden] = useState(false);
+  const [hasResetPlazaScroll, setHasResetPlazaScroll] = useState(false);
+  const [themeChoice, setThemeChoice] = useState('light');
+  const [systemTheme, setSystemTheme] = useState('light');
+  const hasMbti = Boolean(
+    currentUser?.mbti && currentUser.mbti !== 'NO MBTI'
+  );
+  const keyboardInset = useKeyboardInset();
 
   // Lock scroll on auth screens (before entering main app)
   useEffect(() => {
@@ -133,6 +164,85 @@ export default function App() {
       document.head.removeChild(link);
     };
   }, []);
+
+  // Theme handling: detect system theme, persist choice, and apply to document.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored =
+      typeof localStorage !== 'undefined'
+        ? localStorage.getItem('echo-theme-choice')
+        : null;
+    if (stored) {
+      console.log('[theme] load stored', stored);
+      setThemeChoice(stored);
+    }
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    const syncSystemTheme = () => {
+      const next = mq.matches ? 'dark' : 'light';
+      console.log('[theme] system change ->', next);
+      setSystemTheme(next);
+    };
+    syncSystemTheme();
+    mq.addEventListener('change', syncSystemTheme);
+    return () => mq.removeEventListener('change', syncSystemTheme);
+  }, []);
+
+  const resolvedTheme =
+    themeChoice === 'system' ? systemTheme : themeChoice;
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    // Normalise theme application so Tailwind dark variants only follow the in-app choice.
+    root.classList.remove('dark');
+    root.dataset.theme = resolvedTheme;
+    if (resolvedTheme === 'dark') {
+      root.classList.add('dark');
+    }
+    root.style.colorScheme = resolvedTheme === 'dark' ? 'dark' : 'light';
+    document.body.dataset.theme = resolvedTheme;
+    if (typeof localStorage !== 'undefined') {
+      localStorage.setItem('echo-theme-choice', themeChoice);
+    }
+    console.log('[theme] apply', {
+      themeChoice,
+      resolvedTheme,
+      systemTheme,
+      dataset: root.dataset.theme,
+      htmlHasDark: root.classList.contains('dark'),
+      bodyDataset: document.body.dataset.theme
+    });
+  }, [resolvedTheme, themeChoice, systemTheme]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+      }
+    } catch (e) {
+      // noop
+    }
+  }, []);
+
+  // Lock to Plaza when daily question is open
+  useEffect(() => {
+    if (showQuestionModal && activeTab !== 'plaza') {
+      setActiveTab('plaza');
+    }
+  }, [showQuestionModal, activeTab]);
+
+  useEffect(() => {
+    if (!hasMbti) {
+      setShowQuestionModal(false);
+    }
+  }, [hasMbti]);
+
+  useEffect(() => {
+    if (showQuestionModal) {
+      setHasResetPlazaScroll(false);
+    }
+  }, [showQuestionModal]);
 
   const todaysQuestion = (() => {
     const dayOfYear = Math.floor(
@@ -231,6 +341,59 @@ export default function App() {
     }
   };
 
+  const handleOpenPostDetail = (post, options = {}) => {
+    console.log('[detail] open', post?.id, post?.user);
+    const snapshot =
+      plazaRef.current &&
+      typeof plazaRef.current.getScrollSnapshot === 'function'
+        ? plazaRef.current.getScrollSnapshot()
+        : null;
+    setPlazaScrollSnapshot(snapshot);
+    setSelectedPost(post);
+    setShouldFocusComment(Boolean(options.focusComment));
+    setShouldScrollToComments(Boolean(options.scrollToComments));
+    setCommentDraft('');
+  };
+
+  const handleClosePostDetail = () => {
+    console.log('[detail] close');
+    setSelectedPost(null);
+    setShouldFocusComment(false);
+    setShouldScrollToComments(false);
+    setCommentDraft('');
+    const snapshot = plazaScrollSnapshot;
+    setPlazaScrollSnapshot(null);
+    requestAnimationFrame(() => {
+      if (
+        plazaRef.current &&
+        typeof plazaRef.current.restoreScrollSnapshot === 'function'
+      ) {
+        plazaRef.current.restoreScrollSnapshot(snapshot);
+      } else if (snapshot?.top >= 0) {
+        window.scrollTo({ top: snapshot.top, behavior: 'auto' });
+      }
+    });
+  };
+
+  const handleSubmitDetailComment = () => {
+    const trimmed = commentDraft.trim();
+    if (!trimmed || !selectedPost) return;
+    handleAddComment(selectedPost.id, trimmed);
+    setCommentDraft('');
+    setShouldFocusComment(true);
+    setShouldScrollToComments(true);
+  };
+
+  const focusCommentInput = () => {
+    setShouldScrollToComments(true);
+    setShouldFocusComment(true);
+  };
+
+  // Do not lock body for post details; only auth screens lock scroll elsewhere.
+  useEffect(() => {
+    console.log('[detail] selectedPost changed', selectedPost?.id);
+  }, [selectedPost]);
+
   const handleBlockUser = (user) => {
     setBlockedUsers((prev) => {
       if (prev.some((u) => u.id === user.id)) {
@@ -276,6 +439,9 @@ export default function App() {
   };
 
   const finalizeUser = (baseUser) => {
+    const nextHasMbti = Boolean(
+      baseUser?.mbti && baseUser.mbti !== 'NO MBTI'
+    );
     setCurrentUser(baseUser);
     setAuthStage('app');
     setPendingUser(createInitialProfile());
@@ -283,9 +449,12 @@ export default function App() {
     setOtpInput('');
     setOtpError('');
     setActiveTab('plaza');
-    setShowQuestionModal(true);
-    setShowMbtiModal(true);
-    setMbtiSet(randomQuestionSet());
+    setHasResetPlazaScroll(false);
+    setShowQuestionModal(nextHasMbti);
+    setShowMbtiModal(!nextHasMbti);
+    if (!nextHasMbti) {
+      setMbtiSet(randomQuestionSet());
+    }
   };
 
   const handleProfileComplete = () => {
@@ -342,10 +511,15 @@ export default function App() {
       points: typeof user.points === 'number' ? user.points : 800,
       coupons: Array.isArray(user.coupons) ? user.coupons : []
     };
+    const enrichedHasMbti = Boolean(
+      enriched?.mbti && enriched.mbti !== 'NO MBTI'
+    );
     setCurrentUser(enriched);
     setAuthStage('app');
     setActiveTab('plaza');
-    if (!enriched.mbti) {
+    setHasResetPlazaScroll(false);
+    setShowQuestionModal(enrichedHasMbti);
+    if (!enrichedHasMbti) {
       setMbtiSet(randomQuestionSet());
       setShowMbtiModal(true);
     } else {
@@ -355,6 +529,7 @@ export default function App() {
 
   const handleLogout = () => {
     setCurrentUser(null);
+    setHasResetPlazaScroll(false);
     resetToLanding();
   };
 
@@ -429,6 +604,8 @@ export default function App() {
       prev ? { ...prev, mbti: value.toUpperCase() } : prev
     );
     setShowMbtiModal(false);
+    setShowQuestionModal(true);
+    setHasResetPlazaScroll(false);
   };
 
   const renderAuthStage = () => {
@@ -501,6 +678,61 @@ export default function App() {
 
   const plazaRef = React.useRef(null);
 
+  useEffect(() => {
+    if (selectedPost) {
+      setCommentDraft('');
+    }
+  }, [selectedPost]);
+
+  useEffect(() => {
+    if (
+      !selectedPost ||
+      (!shouldFocusComment && !shouldScrollToComments)
+    )
+      return undefined;
+    const timer = setTimeout(() => {
+      commentsSectionRef.current?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'start'
+      });
+      if (shouldFocusComment) {
+        requestAnimationFrame(() => {
+          commentInputRef.current?.focus();
+        });
+      }
+      setShouldFocusComment(false);
+      setShouldScrollToComments(false);
+    }, 80);
+    return () => clearTimeout(timer);
+  }, [selectedPost, shouldFocusComment, shouldScrollToComments]);
+
+  useEffect(() => {
+    if (
+      authStage === 'app' &&
+      activeTab === 'plaza' &&
+      !showQuestionModal &&
+      !selectedPost &&
+      !hasResetPlazaScroll
+    ) {
+      console.log('[plaza] ensure scroll reset, theme', document.documentElement.dataset.theme);
+      if (
+        plazaRef.current &&
+        typeof plazaRef.current.scrollToTopAndRefresh === 'function'
+      ) {
+        plazaRef.current.scrollToTopAndRefresh();
+      } else if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: 'auto' });
+      }
+      setHasResetPlazaScroll(true);
+    }
+  }, [
+    authStage,
+    activeTab,
+    showQuestionModal,
+    selectedPost,
+    hasResetPlazaScroll
+  ]);
+
   // When auth flow is not in main app, render auth screens
   if (!currentUser || authStage !== 'app') {
     return (
@@ -546,7 +778,8 @@ export default function App() {
               posts={posts}
               onLikePost={handleLikePost}
               onAddComment={handleAddComment}
-              onOpenDetail={setSelectedPost}
+              onOpenDetail={handleOpenPostDetail}
+              onOpenComments={handleOpenPostDetail}
             />
           )}
           {activeTab === 'pets' && <GamesTab />}
@@ -576,40 +809,90 @@ export default function App() {
               }
               onOpenDraft={handleOpenDraftForEdit}
               onDeleteDraft={handleDeleteDraft}
+              themeChoice={themeChoice}
+              onThemeChange={setThemeChoice}
             />
           )}
         </div>
 
         {/* Post Detail Overlay */}
         {selectedPost && (
-          <div className="fixed inset-0 z-50 bg-white overflow-y-auto animate-in slide-in-from-right duration-300">
-            <div className="min-h-screen flex flex-col">
-              <div className="px-4 py-3 border-b border-gray-100 flex items-center gap-3 pt-6 bg-white">
-                <button onClick={() => setSelectedPost(null)}>
-                  <ArrowLeft className="w-6 h-6 text-[#151921]" />
-                </button>
-                <span className="font-bold text-[#151921]">
-                  Post Details
-                </span>
+          <ModalPortal>
+            <div
+              key={selectedPost?.id}
+              className="fixed inset-0 h-[100vh] w-full z-[1000] bg-white dark:bg-[#0b1220] flex flex-col isolation-auto overflow-hidden"
+            >
+              <div className="flex flex-col flex-1 h-full">
+                <div className="min-h-0 flex flex-col flex-1 animate-in slide-in-from-right duration-300">
+                  <div className="px-4 py-3 border-b border-gray-100 dark:border-[#1f2937] flex items-center gap-3 pt-6 bg-white dark:bg-[#0f172a] sticky top-0 z-[5]" style={{ paddingTop: 'calc(1.25rem + env(safe-area-inset-top, 0px))' }}>
+                    <button onClick={handleClosePostDetail}>
+                      <ArrowLeft className="w-6 h-6 text-[#151921] dark:text-gray-100" />
+                    </button>
+                    <span className="font-bold text-[#151921] dark:text-gray-100">
+                      Post Details
+                    </span>
+                  </div>
+                  <div
+                    className="flex-1 overflow-y-auto p-4 bg-white dark:bg-[#0b1220]"
+                    style={{
+                      paddingBottom: `calc(140px + env(safe-area-inset-bottom, 0px) + ${keyboardInset}px)`,
+                      WebkitOverflowScrolling: 'touch'
+                    }}
+                  >
+                    <PostItem
+                      post={selectedPost}
+                      onLike={handleLikePost}
+                      onOpenDetail={() => {}}
+                      onCommentPress={focusCommentInput}
+                      commentsAnchorRef={commentsSectionRef}
+                      isDetailView
+                    />
+                  </div>
+                </div>
               </div>
-              <div className="p-4 pb-28 bg-white">
-                <PostItem
-                  post={selectedPost}
-                  onLike={handleLikePost}
-                  onAddComment={handleAddComment}
-                  onOpenDetail={() => {}}
-                  isDetailView
+              <div
+                className="absolute left-0 right-0 bottom-0 bg-white dark:bg-[#0f172a] z-[1001] pointer-events-none"
+                style={{ height: keyboardInset }}
+              />
+              <div
+                className="absolute bottom-0 left-0 right-0 z-[1002] bg-white dark:bg-[#0f172a] border-t border-gray-100 dark:border-[#1f2937] px-4 py-3 flex items-center gap-3"
+                style={{
+                  paddingBottom: `calc(env(safe-area-inset-bottom, 0px) + 12px)`,
+                  transform: `translateY(-${keyboardInset}px)`
+                }}
+              >
+                <input
+                  ref={commentInputRef}
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleSubmitDetailComment();
+                    }
+                  }}
+                  placeholder="Add a comment"
+                  className="flex-1 bg-white dark:bg-[#0f172a] border border-gray-200 dark:border-[#1f2937] rounded-full px-4 py-2 text-sm outline-none focus:border-[#5F48E6] dark:text-gray-100 dark:placeholder-gray-300"
                 />
+                <button
+                  onClick={handleSubmitDetailComment}
+                  disabled={!commentDraft.trim()}
+                  className="w-11 h-11 rounded-full bg-[#5F48E6] text-white disabled:bg-gray-300 disabled:text-gray-500 flex items-center justify-center transition-transform active:scale-95"
+                >
+                  Send
+                </button>
               </div>
             </div>
-          </div>
+          </ModalPortal>
         )}
 
         {/* Fixed Bottom Navigation with integrated Post action */}
-        {!isChatOverlayActive && !isTabBarHidden && (
+        {!isChatOverlayActive && !isTabBarHidden && !selectedPost && (
           <BottomTabBar
             activeTab={activeTab}
+            disabled={showQuestionModal}
             onChangeTab={(next) => {
+              if (showQuestionModal) return;
               if (next === 'plaza' && activeTab === 'plaza') {
                 if (
                   plazaRef.current &&
@@ -627,18 +910,21 @@ export default function App() {
             }}
           />
         )}
-        {/* Modals */}
         {showQuestionModal && (
-          <TodaysQuestionModal
-            question={todaysQuestion}
-            onClose={() => setShowQuestionModal(false)}
-          />
+          <>
+            <div className="fixed inset-0 bg-black/30 z-50 pointer-events-auto" />
+            <div className="fixed bottom-0 left-0 right-0 h-16 bg-black/15 z-50 pointer-events-none" />
+            <TodaysQuestionModal
+              question={todaysQuestion}
+              onClose={() => setShowQuestionModal(false)}
+            />
+          </>
         )}
 
         {/* Home Indicator removed for web */}
       </div>
 
-      {showMbtiModal && !currentUser?.mbti && mbtiSet && (
+      {showMbtiModal && !hasMbti && mbtiSet && (
         <MBTIModal
           questionSet={mbtiSet}
           onClose={() => setShowMbtiModal(false)}

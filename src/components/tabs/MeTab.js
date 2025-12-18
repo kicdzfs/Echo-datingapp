@@ -10,7 +10,6 @@ import {
   Edit3,
   ChevronRight,
   FileText,
-  Coins,
   Settings
 } from 'lucide-react';
 import { VIP_PLANS } from '../../data/mockData';
@@ -86,7 +85,9 @@ const MeTab = ({
   onSectionChange,
   drafts = [],
   onOpenDraft,
-  onDeleteDraft
+  onDeleteDraft,
+  themeChoice = 'system',
+  onThemeChange
 }) => {
   const [activeSection, setActiveSection] = useState('main');
   const [isMatched, setIsMatched] = useState(false);
@@ -162,6 +163,9 @@ const MeTab = ({
       <SettingsPage
         onBack={() => updateSection('main')}
         onOpenBlockList={() => updateSection('blocked')}
+        onThemeChange={onThemeChange}
+        theme={themeChoice}
+        user={user}
       />
     );
   }
@@ -199,7 +203,7 @@ const MeTab = ({
             onClick={() => updateSection('coins')}
             className="w-9 h-9 rounded-full bg-white shadow-sm border border-white flex items-center justify-center text-[#5F48E6] active:scale-95 transition-transform"
           >
-            <Coins className="w-5 h-5" />
+            <i className="fa-solid fa-coins text-lg" />
           </button>
           <button
             onClick={() => updateSection('settings')}
@@ -240,7 +244,7 @@ const MeTab = ({
             </div>
           </div>
           <button
-            onClick={() => setActiveSection('editProfile')}
+            onClick={() => updateSection('editProfile')}
             className="bg-[#F3F0FF] text-[#5F48E6] px-3 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 hover:bg-[#E0D9FF] transition-colors"
           >
             <Edit3 className="w-3 h-3" /> Edit
@@ -257,18 +261,18 @@ const MeTab = ({
       <div className="px-4 mt-4 space-y-3">
         <div
           onClick={() => setIsMatched(!isMatched)}
-          className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
+          className="bg-white dark:bg-[#0b1220] p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-transparent dark:border-white/10"
         >
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-[#5F48E6]">
+            <div className="w-10 h-10 rounded-full bg-purple-100 dark:bg-[#1f2937] flex items-center justify-center text-[#5F48E6] dark:text-[#c7b5ff]">
               <Activity className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#151921]">
+              <h4 className="text-sm font-bold text-[#151921] dark:text-gray-100">
                 My Situation
               </h4>
               <p className="text-xs text-gray-400">
-                {isMatched ? 'Matched' : 'Unmatched'}
+                {isMatched ? 'Clicked' : 'Unclicked'}
               </p>
             </div>
           </div>
@@ -277,14 +281,14 @@ const MeTab = ({
 
         <div
           onClick={() => updateSection('plaza')}
-          className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
+          className="bg-white dark:bg-[#0b1220] p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-transparent dark:border-white/10"
         >
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-500">
+            <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-[#1f2937] flex items-center justify-center text-blue-500 dark:text-blue-300">
               <UserIcon className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#151921]">
+              <h4 className="text-sm font-bold text-[#151921] dark:text-gray-100">
                 Personal Plaza
               </h4>
               <p className="text-xs text-gray-400">
@@ -297,14 +301,14 @@ const MeTab = ({
 
         <div
           onClick={() => updateSection('drafts')}
-          className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
+          className="bg-white dark:bg-[#0b1220] p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-transparent dark:border-white/10"
         >
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-[#F3F0FF] flex items-center justify-center text-[#5F48E6]">
-              <FileText className="w-5 h-5" />
+            <div className="w-10 h-10 rounded-full bg-[#F3F0FF] dark:bg-[#1f2937] flex items-center justify-center text-[#5F48E6] dark:text-[#c7b5ff]">
+              <FileText className="w-5 h-5" strokeWidth={2.1} />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#151921]">
+              <h4 className="text-sm font-bold text-[#151921] dark:text-gray-100">
                 Draft
               </h4>
               <p className="text-xs text-gray-400">
@@ -317,14 +321,14 @@ const MeTab = ({
 
         <div
           onClick={() => updateSection('emall')}
-          className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
+          className="bg-white dark:bg-[#0b1220] p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-transparent dark:border-white/10"
         >
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-500">
+            <div className="w-10 h-10 rounded-full bg-indigo-100 dark:bg-[#1f2937] flex items-center justify-center text-indigo-500 dark:text-indigo-300">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#151921]">
+              <h4 className="text-sm font-bold text-[#151921] dark:text-gray-100">
                 E Mall
               </h4>
               <p className="text-xs text-gray-400">
@@ -337,14 +341,14 @@ const MeTab = ({
 
         <div
           onClick={() => updateSection('vip')}
-          className="bg-white p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform"
+          className="bg-white dark:bg-[#0b1220] p-4 rounded-2xl shadow-sm flex items-center justify-between cursor-pointer active:scale-95 transition-transform border border-transparent dark:border-white/10"
         >
           <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-500">
+            <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-[#1f2937] flex items-center justify-center text-yellow-500 dark:text-yellow-300">
               <Crown className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-sm font-bold text-[#151921]">
+              <h4 className="text-sm font-bold text-[#151921] dark:text-gray-100">
                 VIP Center
               </h4>
               <p className="text-xs text-gray-400">
